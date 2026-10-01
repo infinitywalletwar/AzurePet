@@ -13,9 +13,10 @@ and implementation labs.
 
 **Incremental implementation — Lab 01**
 (`docs/labs/lab-01-walking-skeleton.md`). `docs/ROADMAP.md`,
-`docs/DELIVERY.md` and the Lab 01 spec approved (2026-10-01). Wave 0
-(T-01.1) merged and tagged `lab-01-wave-0` (2026-10-01). Next: wave 1,
-batch 1 (T-01.2–T-01.4), then batch 2 (T-01.5–T-01.7), then T-01.8.
+`docs/DELIVERY.md` and the Lab 01 spec approved (2026-10-01). Waves 0
+and 1 (T-01.1–T-01.8) merged and tagged `lab-01-wave-0`,
+`lab-01-wave-1` (2026-10-01). Next: wave 2 (T-01.9 browser tests,
+T-01.10 README in parallel), then T-01.11 (CI).
 
 Create code, infrastructure, and solution files only within an approved
 lab task. Never create Azure resources; those are human steps
