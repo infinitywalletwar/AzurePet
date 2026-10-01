@@ -139,7 +139,7 @@ project decides otherwise):
 
 - `main` is protected and always green; a lab works on `lab/NN`, branched
   from `main`.
-- At wave start, each task gets a branch `lab/NN/T-NN.x-slug` cut from the
+- At wave start, each task gets a branch `task/NN/T-NN.x-slug` cut from the
   current tip of `lab/NN`, in its own worktree; one developer agent per task
   commits there.
 - Each task must pass its `Verify` command and the reviewers in its
