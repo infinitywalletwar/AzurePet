@@ -3,26 +3,36 @@
 ## Project
 
 A production-oriented educational project: designing and implementing a
-scalable video streaming and video analytics platform on Microsoft Azure
-using .NET.
+scalable application on Microsoft Azure using .NET / ASP.NET Core and a
+Blazor UI. The business domain is defined in `docs/REQUIREMENTS.md`.
 
 The project is built incrementally as a sequence of architecture phases
 and implementation labs.
 
 ## Current phase
 
-**Architecture and requirements.**
+**Incremental implementation — Lab 01**
+(`docs/labs/lab-01-walking-skeleton.md`). `docs/ROADMAP.md`,
+`docs/DELIVERY.md` and the Lab 01 spec approved (2026-10-01). Next:
+wave 0 (T-01.1) by a single `dotnet-azure-developer`, per `docs/DELIVERY.md`.
 
-Do not create application code, infrastructure, Azure resources, or
-solution files unless explicitly requested.
-Update this section when the project moves to implementation.
+Create code, infrastructure, and solution files only within an approved
+lab task. Never create Azure resources; those are human steps
+(`docs/DELIVERY.md` §2.2).
+Update this section when a lab or wave completes.
 
 ## Workflow
 
 Follow this order and do not skip phases:
 
-Requirements → Architecture → Architecture review → Architecture decisions
-→ Lab roadmap → Incremental implementation
+Plan (`docs/PLAN.md`) → Requirements → Architecture → Architecture review
+→ Architecture decisions → Lab roadmap → Incremental implementation
+
+Design phases (plan through lab roadmap) are done with
+`solution-architect`, which writes only to `docs/`. Lab specs split work
+into tasks and parallel waves. The delivery process (branching, CI/CD,
+environments, releases, wave workflow) is also designed by
+`solution-architect`, in `docs/DELIVERY.md`.
 
 During implementation:
 
@@ -49,6 +59,7 @@ During implementation:
 ## Technology direction
 
 - Application: .NET 10+ / ASP.NET Core
+- UI: Blazor (render modes decided per ADR)
 - Cloud: Microsoft Azure, with DevOps practices (CI/CD)
 - Infrastructure as code: Bicep
 
@@ -62,6 +73,7 @@ decisions have been made.
 - `docs/REQUIREMENTS.md` — system requirements and constraints
 - `docs/ARCHITECTURE.md` — current system architecture
 - `docs/ROADMAP.md` — project phases and labs
+- `docs/DELIVERY.md` — development workflow, CI/CD, environments, releases
 - `docs/architecture/decisions/` — Architecture Decision Records
 - `docs/labs/` — lab specifications
 

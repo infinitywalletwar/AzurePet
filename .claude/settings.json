@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Bash(az deployment:*)",
+      "Bash(az group create:*)",
+      "Bash(az group delete:*)",
+      "Bash(az resource create:*)",
+      "Bash(az resource update:*)",
+      "Bash(az resource delete:*)",
+      "Bash(az role assignment create:*)",
+      "Bash(az role assignment delete:*)",
+      "Bash(az ad:*)",
+      "Bash(az keyvault secret set:*)",
+      "Bash(az keyvault secret delete:*)",
+      "Bash(az containerapp create:*)",
+      "Bash(az containerapp update:*)",
+      "Bash(az containerapp delete:*)",
+      "Bash(az containerapp up:*)",
+      "Bash(az sql server create:*)",
+      "Bash(az sql server delete:*)",
+      "Bash(az sql db create:*)",
+      "Bash(az sql db delete:*)",
+      "Bash(az storage account create:*)",
+      "Bash(az storage account delete:*)",
+      "Bash(azd up:*)",
+      "Bash(azd provision:*)",
+      "Bash(azd deploy:*)",
+      "Bash(azd down:*)",
+      "Bash(docker push:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -fd:*)",
+      "Bash(gh repo delete:*)",
+      "Read(./.env)",
+      "Read(./**/.env)",
+      "Read(./**/*.pfx)",
+      "Read(./**/*.pem)"
+    ],
+    "ask": [
+      "Bash(az:*)",
+      "Bash(azd:*)",
+      "Bash(git push:*)",
+      "Bash(gh repo create:*)",
+      "Bash(gh pr merge:*)"
+    ]
+  }
+}
