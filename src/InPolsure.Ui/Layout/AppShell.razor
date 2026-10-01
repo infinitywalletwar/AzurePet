@@ -1,0 +1,61 @@
+@implements IDisposable
+@inject NavigationManager Navigation
+
+@* The skip link targets the current path (not "#main-content" alone, which <base href="/"> would resolve to the
+   home page) and opts out of enhanced navigation so the browser performs a native fragment jump that also
+   moves keyboard focus to <main>. *@
+<a class="skip-link" href="@SkipLinkHref" data-enhance-nav="false">Skip to main content</a>
+
+<header class="app-header">
+    <a class="app-header__brand" href="@HomeHref">@ProductName</a>
+    @HeaderContent
+</header>
+
+<main id="@MainContentId" class="app-main" tabindex="-1">
+    @ChildContent
+</main>
+
+<footer class="app-footer">
+    @if (FooterContent is null)
+    {
+        <p class="app-footer__text">@ProductName</p>
+    }
+    else
+    {
+        @FooterContent
+    }
+</footer>
+
+@code {
+    /// <summary>The <c>id</c> of the <c>main</c> landmark, the target of the skip link.</summary>
+    public const string MainContentId = "main-content";
+
+    /// <summary>Product name shown in the header and the default footer.</summary>
+    [Parameter]
+    public string ProductName { get; set; } = "InPolsure";
+
+    /// <summary>Target of the product-name link in the header.</summary>
+    [Parameter]
+    public string HomeHref { get; set; } = "/";
+
+    /// <summary>Optional content after the product name in the header (for example navigation).</summary>
+    [Parameter]
+    public RenderFragment? HeaderContent { get; set; }
+
+    /// <summary>Page content rendered inside the <c>main</c> landmark.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>Optional footer content; the product name is shown when not set.</summary>
+    [Parameter]
+    public RenderFragment? FooterContent { get; set; }
+
+    private string SkipLinkHref => $"{new Uri(Navigation.Uri).PathAndQuery}#{MainContentId}";
+
+    protected override void OnInitialized() => Navigation.LocationChanged += OnLocationChanged;
+
+    // Only relevant when the shell is rendered interactively; in Static SSR every navigation re-renders it.
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e) => _ = InvokeAsync(StateHasChanged);
+
+    public void Dispose() => Navigation.LocationChanged -= OnLocationChanged;
+}

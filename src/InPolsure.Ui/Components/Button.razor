@@ -1,0 +1,48 @@
+@* A native <button>: keyboard operable, works as a submit button in Static SSR forms and with OnClick in
+   interactive render modes. Never emits inline styles; appearance comes from CSS classes only. *@
+<button @attributes="AdditionalAttributes"
+        type="@TypeAttribute"
+        class="@CssClass"
+        disabled="@Disabled"
+        @onclick="OnClick">
+    @ChildContent
+</button>
+
+@code {
+    /// <summary>Button text or content. Must give the button an accessible name.</summary>
+    [Parameter, EditorRequired]
+    public RenderFragment? ChildContent { get; set; }
+
+    /// <summary>The HTML <c>type</c> of the button. Default: <see cref="ButtonType.Button"/>.</summary>
+    [Parameter]
+    public ButtonType Type { get; set; } = ButtonType.Button;
+
+    /// <summary>Visual emphasis. Default: <see cref="ButtonVariant.Primary"/>.</summary>
+    [Parameter]
+    public ButtonVariant Variant { get; set; } = ButtonVariant.Primary;
+
+    /// <summary>Disables the button.</summary>
+    [Parameter]
+    public bool Disabled { get; set; }
+
+    /// <summary>Click handler (interactive render modes only).</summary>
+    [Parameter]
+    public EventCallback<MouseEventArgs> OnClick { get; set; }
+
+    /// <summary>Other attributes (for example <c>name</c>, <c>value</c>, <c>aria-*</c>) passed to the element.</summary>
+    [Parameter(CaptureUnmatchedValues = true)]
+    public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
+
+    private string TypeAttribute => Type switch
+    {
+        ButtonType.Submit => "submit",
+        ButtonType.Reset => "reset",
+        _ => "button",
+    };
+
+    private string CssClass => Variant switch
+    {
+        ButtonVariant.Secondary => "button button--secondary",
+        _ => "button button--primary",
+    };
+}

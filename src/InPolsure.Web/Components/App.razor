@@ -6,13 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <ResourcePreloader />
-    <ImportMap />
+    @* No <ImportMap />: it renders an inline import-map script element that the strict CSP blocks, and this app
+       loads no JS modules through bare specifiers (lab-01 §6.1). Our scripts are referenced by path. *@
+    <link rel="stylesheet" href="@Assets["_content/InPolsure.Ui/base.css"]" />
+    <link rel="stylesheet" href="@Assets["InPolsure.Web.styles.css"]" />
+    <link rel="icon" type="image/svg+xml" href="@Assets["favicon.svg"]" />
     <HeadOutlet />
 </head>
 
 <body>
     <Routes />
     <script src="@Assets["_framework/blazor.web.js"]"></script>
+    @* Loaded on every page (small, cached) because enhanced navigation does not run scripts added with new
+       page content; it only acts when an interactive layout has rendered the ReconnectModal dialog. *@
+    <script type="module" src="@Assets["Components/Layout/ReconnectModal.razor.js"]"></script>
 </body>
 
 </html>

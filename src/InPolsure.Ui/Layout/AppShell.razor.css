@@ -1,0 +1,66 @@
+.skip-link {
+    position: absolute;
+    top: var(--space-2);
+    left: var(--space-2);
+    z-index: 100;
+    padding: var(--space-2) var(--space-3);
+    background-color: var(--brand-primary);
+    color: var(--brand-on-primary);
+    font-weight: 600;
+    border-radius: var(--radius);
+    transform: translateY(-200%);
+}
+
+.skip-link:focus {
+    transform: none;
+}
+
+.app-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background-color: var(--brand-primary);
+    color: var(--brand-on-primary);
+}
+
+.app-header__brand {
+    color: var(--brand-on-primary);
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.app-header__brand:hover {
+    text-decoration: underline;
+}
+
+.app-header__brand:focus-visible {
+    outline-color: var(--brand-on-primary);
+}
+
+.app-main {
+    flex: 1 0 auto;
+    width: 100%;
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--space-4);
+}
+
+/* Programmatic focus from the skip link should not draw a ring around the whole page. */
+.app-main:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.app-footer {
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--color-border);
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+.app-footer__text {
+    margin: 0;
+}

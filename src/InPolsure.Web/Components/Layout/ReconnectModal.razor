@@ -1,0 +1,33 @@
+@* Reconnect UI from the .NET 10 Blazor Web App template (ADR-0008 rule 6). blazor.web.js finds the dialog by
+   id and reports state changes to it; ReconnectModal.razor.js (referenced in App.razor) shows and hides it.
+   Styles live in ReconnectModal.razor.css, so no inline style or script is needed under the strict CSP. *@
+<dialog id="components-reconnect-modal" aria-labelledby="components-reconnect-title" data-nosnippet>
+    <div class="components-reconnect-container">
+        <h2 id="components-reconnect-title" class="visually-hidden">Connection to the server</h2>
+        <div class="components-rejoining-animation" aria-hidden="true">
+            <div></div>
+            <div></div>
+        </div>
+        <p class="components-reconnect-first-attempt-visible">
+            Rejoining the server...
+        </p>
+        <p class="components-reconnect-repeated-attempt-visible">
+            Rejoin failed... trying again in <span id="components-seconds-to-next-attempt"></span> seconds.
+        </p>
+        <p class="components-reconnect-failed-visible">
+            Failed to rejoin.<br />Please retry or reload the page.
+        </p>
+        <button id="components-reconnect-button" type="button" class="components-reconnect-failed-visible">
+            Retry
+        </button>
+        <p class="components-pause-visible">
+            The session has been paused by the server.
+        </p>
+        <p class="components-resume-failed-visible">
+            Failed to resume the session.<br />Please retry or reload the page.
+        </p>
+        <button id="components-resume-button" type="button" class="components-pause-visible components-resume-failed-visible">
+            Resume
+        </button>
+    </div>
+</dialog>

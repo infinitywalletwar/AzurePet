@@ -1,0 +1,67 @@
+@page "/_probe/interactive"
+@rendermode InteractiveServer
+@layout InteractiveLayout
+@using InPolsure.Web.Diagnostics
+@using Microsoft.AspNetCore.Components.QuickGrid
+@using Microsoft.Extensions.Options
+@inject IOptions<DiagnosticsOptions> DiagnosticsOptions
+@inject NavigationManager Navigation
+
+@*
+    UI probe page for the ADR-0017 item 5 CSP check (lab-01 §6.4): Interactive Server, QuickGrid and the
+    ReconnectModal (via InteractiveLayout). Guard: when Diagnostics:EnableUiProbePages is false, the page calls
+    NavigationManager.NotFound() while it is prerendered. With per-page interactivity, prerendering is Static SSR,
+    so the response gets status 404 and the router's NotFoundPage instead of this page; no circuit is started.
+*@
+@if (_enabled)
+{
+    <PageTitle>Interactive probe - InPolsure</PageTitle>
+
+    <h1>Interactive probe</h1>
+
+    <p>Diagnostic page used by the browser tests. It is not part of the product.</p>
+
+    <p>
+        Render state:
+        <strong id="probe-render-state">@(RendererInfo.IsInteractive ? "Interactive" : "Prerendered")</strong>
+    </p>
+
+    <h2>Button</h2>
+
+    <p id="probe-click-count" role="status">Click count: @_clickCount</p>
+
+    <Button OnClick="Increment" Disabled="!RendererInfo.IsInteractive" id="probe-increment">Increment</Button>
+
+    <h2 id="probe-grid-heading">Grid</h2>
+
+    <div class="table-scroll">
+        <QuickGrid Items="Items" Class="probe-grid" aria-labelledby="probe-grid-heading">
+            <PropertyColumn Property="@(item => item.Name)" Title="Name" Sortable="true" IsDefaultSortColumn="true" />
+            <PropertyColumn Property="@(item => item.Category)" Title="Category" />
+        </QuickGrid>
+    </div>
+}
+
+@code {
+    private static readonly IQueryable<ProbeItem> Items = new ProbeItem[]
+    {
+        new(1, "Delta", "Second"),
+        new(2, "Alpha", "First"),
+        new(3, "Charlie", "Second"),
+        new(4, "Bravo", "First"),
+    }.AsQueryable();
+
+    private bool _enabled;
+    private int _clickCount;
+
+    protected override void OnInitialized()
+    {
+        _enabled = DiagnosticsOptions.Value.EnableUiProbePages;
+        if (!_enabled)
+        {
+            Navigation.NotFound();
+        }
+    }
+
+    private void Increment() => _clickCount++;
+}
