@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Approved** (2026-10-01). Proposed by solution-architect. Patch 2026-10-01 (user-approved): test runner switched to Microsoft.Testing.Platform via `global.json`, and the wave-0 build conventions (NuGet audit level, IDE0005, test SDKs, CA1707, Blazor template default) recorded in §5. Notes on MTP syntax and exit code 8 added to T-01.10 and T-01.11. |
+| **Status** | **Approved** (2026-10-01). Proposed by solution-architect. Patch 2026-10-01 (user-approved): test runner switched to Microsoft.Testing.Platform via `global.json`, and the wave-0 build conventions (NuGet audit level, IDE0005, test SDKs, CA1707, Blazor template default) recorded in §5. Notes on MTP syntax and exit code 8 added to T-01.10 and T-01.11. Patch 2026-10-01 (user-approved, after wave 1 batch 1 reviews): accepted T-01.3 deviations and config keys (§6.1), health excluded from HTTP metrics and GET/HEAD only (§6.2), builder-style extension exception (§5), path-based trace filter and query redaction note (§6.3), T-01.8 pipeline order, logging, log-content test and `PublishDocumentationFiles` (§9). |
 | **Lab branch** | `lab/01` (from `main`) |
 | **Version after the lab** | `0.1.0` ([`DELIVERY.md`](../DELIVERY.md) §9) |
 | **Roadmap** | [`ROADMAP.md`](../ROADMAP.md#lab-01-walking-skeleton) |
@@ -173,7 +173,10 @@ project is created in this lab.
   pattern `AddInPolsure<Feature>(this IServiceCollection, IConfiguration)`
   and `UseInPolsure<Feature>` / `MapInPolsure<Feature>` on the app. This
   lets parallel tasks deliver features without editing `Program.cs`
-  (only the integration task wires them).
+  (only the integration task wires them). **Exception:** a feature that
+  must configure logging or read the host environment uses
+  `AddInPolsure<Feature><TBuilder>(this TBuilder) where TBuilder : IHostApplicationBuilder`,
+  as in Aspire ServiceDefaults (first case: `AddInPolsureObservability`).
 
 ### Packages added in wave 0 (all later tasks use only these)
 
@@ -230,13 +233,36 @@ changed.
 - Options: `Security:Csp:ReportOnly` (default `false`) switches the
   header name to `Content-Security-Policy-Report-Only`. Validate the
   options at startup.
+- **Accepted in T-01.3 review (2026-10-01):**
+  - `X-Frame-Options: DENY` is also sent. It overrides antiforgery's
+    `SAMEORIGIN`, matches `frame-ancestors 'none'`, and protects while
+    CSP is report-only and for legacy browsers and scanners.
+  - `upgrade-insecure-requests` is added only to the **enforced** CSP
+    when HSTS is enabled; it is omitted in report-only mode (browsers
+    ignore it there and log a console CSP warning that would trip
+    T-01.9's violation detector).
+  - HSTS is emitted by our security-headers middleware regardless of
+    request scheme. The app must **not** call `UseHsts()` (it skips
+    plain HTTP and localhost; TLS ends at the ingress, and forwarded
+    headers arrive only in Lab 02) nor `UseHttpsRedirection()`.
+  - Config keys: `Security:Csp:ReportOnly` (bool, default `false`),
+    `Security:Hsts:Enabled` (bool), `Security:Hsts:MaxAgeSeconds` (int,
+    ≥ 31536000, validated at startup even when HSTS is disabled),
+    `Security:Hsts:IncludeSubDomains` (bool, default `false`, because
+    tenant and dev/test hosts share the parent domain per ADR-0016).
+    The HSTS options class is `SecurityHstsOptions`.
+  - On Interactive Server endpoints responses carry **two** CSP headers:
+    ours plus Blazor's `frame-ancestors 'none'`.
 
 ### 6.2 Health
 
 - `/health/live`: no checks (process alive). `/health/ready`: only
   checks tagged `ready`; none exist yet (database checks come in
   Lab 03, prod-only per ADR-0010 item 6). Both anonymous,
-  `Cache-Control: no-store`, plain-text status, excluded from tracing.
+  `Cache-Control: no-store`, plain-text status, GET and HEAD only,
+  excluded from tracing **and** from ASP.NET Core HTTP metrics
+  (`.DisableHttpMetrics()`). Readiness checks added in later labs must
+  use the tag `ready`.
 
 ### 6.3 Observability
 
@@ -245,11 +271,18 @@ changed.
 - Tracing: ASP.NET Core and HttpClient instrumentation; filter out
   `/health/*` and static assets. Metrics: ASP.NET Core, HttpClient,
   runtime. Logs: OTel logging provider with scopes.
+- The trace filter is **path-based** (it runs before routing): no spans
+  for `/health*`, `/_framework*`, `/_content*`, and paths whose last
+  segment has a file extension. Note for later labs: routes ending with
+  a dotted segment (e.g. Lab 06 attachment downloads, Lab 13
+  `/theme.css`) require revisiting this filter.
 - Export with `UseOtlpExporter()` **only when**
   `OTEL_EXPORTER_OTLP_ENDPOINT` is set; nothing is exported otherwise
   (tests, CI). Azure Monitor export is Lab 02.
 - Confirm that the ASP.NET Core instrumentation version in use redacts
   query-string values by default (NFR-042); if not, configure it.
+  Confirmed: redaction is the default in OpenTelemetry instrumentation
+  1.19 and is covered by a runtime test.
 - Non-Development: JSON console formatter. Never log request or
   response bodies.
 
@@ -538,18 +571,30 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
 - **Wave:** 1 (integration, runs after T-01.2 to T-01.7 are merged into
   `lab/01`).
 - **Description:** wire all features in `Program.cs` in this order:
-  observability → exception handler/HSTS → security headers → static
-  assets → antiforgery → health endpoints → Razor components. Add
-  configuration to `appsettings.json` (`Security`, `Diagnostics`,
-  logging levels) and `appsettings.Development.json`. Add full-host
-  integration tests through `WebApplicationFactory<Program>` for AC-04,
-  AC-05, AC-06, AC-10, AC-11. Re-run the container check of T-01.6 for
+  observability (`builder.AddInPolsureObservability()` first) →
+  exception handler → security headers (emits HSTS; no `UseHsts` and no
+  `UseHttpsRedirection`, §6.1) → static assets → antiforgery → health
+  endpoints → Razor components. Configuration: `appsettings.json` gets
+  the `Security:*` keys of §6.1 (`Security:Hsts:Enabled` `true`;
+  `false` in `appsettings.Development.json`), `Diagnostics` and logging
+  levels; set `Microsoft.AspNetCore.Hosting.Diagnostics` to `Warning` in
+  every environment, because the hosting "Request starting" log
+  contains the raw query string (NFR-042). Add full-host integration
+  tests through `WebApplicationFactory<Program>` for AC-04, AC-05,
+  AC-06 (expect two CSP header values on interactive endpoints, §6.1),
+  AC-10, AC-11, plus a log-content test (ADR-0010 item 4): a request
+  with `?token=secret-value` produces no log record containing
+  `secret-value`. Add `<PublishDocumentationFiles>false</PublishDocumentationFiles>`
+  to `Directory.Build.props` (otherwise XML doc files land in the
+  container image). Re-run the container check of T-01.6 for
   `/health/live`.
 - **Depends on:** T-01.2, T-01.3, T-01.4, T-01.5, T-01.6, T-01.7.
 - **Owns:** `src/InPolsure.Web/Program.cs`,
   `src/InPolsure.Web/appsettings*.json`,
-  `tests/InPolsure.Web.IntegrationTests/Host/**`.
-- **Shared files:** `Program.cs`, `appsettings*.json`.
+  `tests/InPolsure.Web.IntegrationTests/Host/**`,
+  `Directory.Build.props` (the `PublishDocumentationFiles` line only).
+- **Shared files:** `Program.cs`, `appsettings*.json`,
+  `Directory.Build.props`.
 - **Acceptance:** AC-01 to AC-06, AC-10, AC-11 on the real host;
   container answers `/health/live`.
 - **Verify:**
@@ -643,7 +688,7 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
 |---|---|---|---|---|---|
 | 0 | T-01.1 Solution skeleton and conventions | No (one agent) | Creates every shared file and convention the others depend on | dotnet-code-reviewer, architecture-compliance-reviewer | `lab-01-wave-0` |
 | 1 | T-01.2 Health; T-01.3 Security headers and CSP; T-01.4 Observability; T-01.5 UI shell and probe page; T-01.6 Container; T-01.7 Architecture tests | **Yes** (6 worktrees) | Each owns its own folder; none edits `Program.cs`, `.slnx`, `Directory.*.props` or `appsettings*.json`; features are exposed as extension methods | dotnet-code-reviewer (T-01.2, .3, .4, .5, .7); azure-infra-reviewer (T-01.6) | — |
-| 1-int | T-01.8 Host wiring | No (integration) | Owns the shared `Program.cs` and `appsettings*.json` | dotnet-code-reviewer | `lab-01-wave-1` |
+| 1-int | T-01.8 Host wiring | No (integration) | Owns the shared `Program.cs`, `appsettings*.json` and one line of `Directory.Build.props` | dotnet-code-reviewer | `lab-01-wave-1` |
 | 2 | T-01.9 Browser tests; T-01.10 README | **Yes** (2 worktrees) | Disjoint paths: tests and UI fixes vs `README.md` | dotnet-code-reviewer (T-01.9); architecture-compliance-reviewer (T-01.10) | — |
 | 2-int | T-01.11 CI pipeline and repository automation | No (integration) | Owns the CI hotspot; must run the final test projects | azure-infra-reviewer | `lab-01-wave-2` |
 | End | Whole lab diff `main...lab/01` | — | — | architecture-compliance-reviewer | `lab-01` (on `main` after merge) |
