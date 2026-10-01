@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Approved** (2026-10-01). Proposed by solution-architect. |
+| **Status** | **Approved** (2026-10-01). Proposed by solution-architect. Patch 2026-10-01 (user-approved): test runner switched to Microsoft.Testing.Platform via `global.json`, and the wave-0 build conventions (NuGet audit level, IDE0005, test SDKs, CA1707, Blazor template default) recorded in §5. Notes on MTP syntax and exit code 8 added to T-01.10 and T-01.11. |
 | **Lab branch** | `lab/01` (from `main`) |
 | **Version after the lab** | `0.1.0` ([`DELIVERY.md`](../DELIVERY.md) §9) |
 | **Roadmap** | [`ROADMAP.md`](../ROADMAP.md#lab-01-walking-skeleton) |
@@ -137,6 +137,33 @@ project is created in this lab.
 - Tests: xUnit v3; test names `Method_or_behaviour_condition_expected`;
   plain xUnit assertions (no assertion library, to avoid licence and
   dependency churn).
+- **Test runner: Microsoft.Testing.Platform (MTP).** `global.json` sets
+  `"test": { "runner": "Microsoft.Testing.Platform" }`. Reason: xunit.v3
+  4.x runs only on MTP with the .NET 10 SDK; VSTest-mode `dotnet test`
+  fails ("Testing with VSTest target is no longer supported").
+  Alternative considered: pin xunit.v3 to 3.2.2 and stay on VSTest —
+  rejected because it is not the latest stable and VSTest is being
+  phased out. Trade-offs: `dotnet test InPolsure.slnx -c Release` and
+  `dotnet test <project> --filter "FullyQualifiedName~X"` work
+  unchanged, but (a) a filter that matches zero tests exits with
+  **code 8** (not 0), and (b) reporting uses MTP options
+  (`--report-trx`, `--results-directory`, `--coverage`), not VSTest's
+  `--logger trx` / `--collect`. `Microsoft.NET.Test.Sdk` and
+  `xunit.runner.visualstudio` stay in the package list for IDE
+  test-explorer compatibility.
+- `NuGetAuditLevel` `high`: only high/critical advisories break the
+  build under `TreatWarningsAsErrors`; low/moderate ones are still
+  reported but do not break builds (consistent with NFR-027).
+- IDE0005 (unused usings) is enforced in build: this requires
+  `GenerateDocumentationFile` true, with `NoWarn` `CS1591` so missing
+  XML docs do not fail the build.
+- Project SDKs: `InPolsure.UnitTests` uses `Microsoft.NET.Sdk.Razor`
+  (bUnit `.razor` tests); `InPolsure.Web.IntegrationTests` and
+  `InPolsure.Web.UiTests` use `Microsoft.NET.Sdk.Web`.
+- CA1707 (underscores in identifiers) is disabled under `tests/**` to
+  allow the test naming convention above.
+- `BlazorDisableThrowNavigationException` true in `InPolsure.Web.csproj`
+  is kept as the accepted .NET 10 Blazor Web App template default.
 - All UI and log texts in English (NFR-082). No inline `style`
   attributes, no `<style>` or `<script>` elements in our markup
   (ADR-0017 item 4).
@@ -571,7 +598,10 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
   with `dotnet run` and with `docker compose`, the Aspire dashboard URL,
   installing Playwright browsers, the probe-page switch, where
   configuration lives, the "no secrets in the repository" rule
-  (user-secrets only). English.
+  (user-secrets only). English. Tests run on MTP (§5): document MTP
+  options (`--report-trx`, `--results-directory`, `--coverage`), not
+  VSTest's `--logger` / `--collect`, and that a filter matching zero
+  tests exits with code 8.
 - **Depends on:** T-01.8.
 - **Owns:** `README.md`.
 - **Shared files:** none.
@@ -589,7 +619,11 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
 - **Description:** `.github/workflows/ci.yml` per §6.7 (jobs
   `build-test`, `ui-tests`, `container`, `dependency-review`),
   `.github/dependabot.yml`, `.github/pull_request_template.md` with the
-  checklist from [`DELIVERY.md`](../DELIVERY.md) §7.
+  checklist from [`DELIVERY.md`](../DELIVERY.md) §7. Tests run on MTP
+  (§5): use `--report-trx --results-directory <dir>` (and `--coverage`
+  if needed), not `--logger trx` / `--collect`; a `--filter` step that
+  matches zero tests exits with code 8 and fails the job, so filters in
+  `ci.yml` must match real tests.
 - **Depends on:** T-01.9, T-01.10.
 - **Owns:** `.github/**`.
 - **Shared files:** `.github/workflows/ci.yml` (CI hotspot).
