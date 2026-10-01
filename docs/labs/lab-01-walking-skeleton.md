@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Approved** (2026-10-01). Proposed by solution-architect. Patch 2026-10-01 (user-approved): test runner switched to Microsoft.Testing.Platform via `global.json`, and the wave-0 build conventions (NuGet audit level, IDE0005, test SDKs, CA1707, Blazor template default) recorded in §5. Notes on MTP syntax and exit code 8 added to T-01.10 and T-01.11. Patch 2026-10-01 (user-approved, after wave 1 batch 1 reviews): accepted T-01.3 deviations and config keys (§6.1), health excluded from HTTP metrics and GET/HEAD only (§6.2), builder-style extension exception (§5), path-based trace filter and query redaction note (§6.3), T-01.8 pipeline order, logging, log-content test and `PublishDocumentationFiles` (§9). |
+| **Status** | **Approved** (2026-10-01). Proposed by solution-architect. Patch 2026-10-01 (user-approved): test runner switched to Microsoft.Testing.Platform via `global.json`, and the wave-0 build conventions (NuGet audit level, IDE0005, test SDKs, CA1707, Blazor template default) recorded in §5. Notes on MTP syntax and exit code 8 added to T-01.10 and T-01.11. Patch 2026-10-01 (user-approved, after wave 1 batch 1 reviews): accepted T-01.3 deviations and config keys (§6.1), health excluded from HTTP metrics and GET/HEAD only (§6.2), builder-style extension exception (§5), path-based trace filter and query redaction note (§6.3), T-01.8 pipeline order, logging, log-content test and `PublishDocumentationFiles` (§9). Patch 2026-10-01 (user decision, after T-01.6): align on .NET SDK `10.0.401` everywhere — T-01.8 bumps `global.json` (local prerequisite in §8); T-01.11 uses `setup-dotnet` with `global-json-file`, passes `SOURCE_REVISION_ID` to `docker build`, and extends Dependabot `docker` updates to the root `compose.yaml` (§9). |
 | **Lab branch** | `lab/01` (from `main`) |
 | **Version after the lab** | `0.1.0` ([`DELIVERY.md`](../DELIVERY.md) §9) |
 | **Roadmap** | [`ROADMAP.md`](../ROADMAP.md#lab-01-walking-skeleton) |
@@ -413,6 +413,9 @@ Before wave 0 (owner; agents must not do these):
    deletions. Required status checks are added after the lab PR has run
    CI once (DoD item 6).
 5. Locally: .NET 10 SDK, Docker, PowerShell 7 (`pwsh`), Git ≥ 2.40.
+   Before T-01.8 merges, the .NET SDK must be **10.0.401 or a later
+   10.0.4xx** (T-01.8 pins `global.json` to `10.0.401` with
+   `rollForward: latestFeature`).
 
 Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
 
@@ -586,15 +589,25 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
   with `?token=secret-value` produces no log record containing
   `secret-value`. Add `<PublishDocumentationFiles>false</PublishDocumentationFiles>`
   to `Directory.Build.props` (otherwise XML doc files land in the
-  container image). Re-run the container check of T-01.6 for
-  `/health/live`.
+  container image). Bump the SDK pin in `global.json` to `10.0.401`
+  (keep `rollForward: latestFeature`, `allowPrerelease: false`; user
+  decision 2026-10-01): with `TreatWarningsAsErrors` and
+  `AnalysisLevel=latest-recommended`, a different SDK feature band can
+  add analyzer warnings that break only the image build or only CI, so
+  local builds, the Dockerfile SDK image
+  (`mcr.microsoft.com/dotnet/sdk:10.0.401`, whose bundled runtime 10.0.12
+  matches `aspnet:10.0.12-noble-chiseled`) and CI (`setup-dotnet` with
+  `global-json-file`, T-01.11) must use the same SDK band (10.0.4xx).
+  Fix any new analyzer findings the bump surfaces. Re-run the container
+  check of T-01.6 for `/health/live`.
 - **Depends on:** T-01.2, T-01.3, T-01.4, T-01.5, T-01.6, T-01.7.
 - **Owns:** `src/InPolsure.Web/Program.cs`,
   `src/InPolsure.Web/appsettings*.json`,
   `tests/InPolsure.Web.IntegrationTests/Host/**`,
-  `Directory.Build.props` (the `PublishDocumentationFiles` line only).
+  `Directory.Build.props` (the `PublishDocumentationFiles` line only),
+  `global.json` (the SDK `version` only).
 - **Shared files:** `Program.cs`, `appsettings*.json`,
-  `Directory.Build.props`.
+  `Directory.Build.props`, `global.json`.
 - **Acceptance:** AC-01 to AC-06, AC-10, AC-11 on the real host;
   container answers `/health/live`.
 - **Verify:**
@@ -668,7 +681,15 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
   (§5): use `--report-trx --results-directory <dir>` (and `--coverage`
   if needed), not `--logger trx` / `--collect`; a `--filter` step that
   matches zero tests exits with code 8 and fails the job, so filters in
-  `ci.yml` must match real tests.
+  `ci.yml` must match real tests. Install the SDK with `setup-dotnet`
+  and `global-json-file: global.json` (same 10.0.4xx band as the
+  Dockerfile, T-01.8). The `container` job's `docker build` passes
+  `--build-arg SOURCE_REVISION_ID=${{ github.sha }}` (the Dockerfile
+  stamps `0.1.0+<sha>` into `InformationalVersion`,
+  [`DELIVERY.md`](../DELIVERY.md) §9). Dependabot `docker` updates must
+  also cover the root `compose.yaml` (pinned `aspire-dashboard` image),
+  e.g. a `docker-compose` ecosystem entry for `/` or a second `docker`
+  entry for `/`, in addition to `src/InPolsure.Web`.
 - **Depends on:** T-01.9, T-01.10.
 - **Owns:** `.github/**`.
 - **Shared files:** `.github/workflows/ci.yml` (CI hotspot).
@@ -688,7 +709,7 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
 |---|---|---|---|---|---|
 | 0 | T-01.1 Solution skeleton and conventions | No (one agent) | Creates every shared file and convention the others depend on | dotnet-code-reviewer, architecture-compliance-reviewer | `lab-01-wave-0` |
 | 1 | T-01.2 Health; T-01.3 Security headers and CSP; T-01.4 Observability; T-01.5 UI shell and probe page; T-01.6 Container; T-01.7 Architecture tests | **Yes** (6 worktrees) | Each owns its own folder; none edits `Program.cs`, `.slnx`, `Directory.*.props` or `appsettings*.json`; features are exposed as extension methods | dotnet-code-reviewer (T-01.2, .3, .4, .5, .7); azure-infra-reviewer (T-01.6) | — |
-| 1-int | T-01.8 Host wiring | No (integration) | Owns the shared `Program.cs`, `appsettings*.json` and one line of `Directory.Build.props` | dotnet-code-reviewer | `lab-01-wave-1` |
+| 1-int | T-01.8 Host wiring | No (integration) | Owns the shared `Program.cs`, `appsettings*.json`, one line of `Directory.Build.props` and the SDK version in `global.json` | dotnet-code-reviewer | `lab-01-wave-1` |
 | 2 | T-01.9 Browser tests; T-01.10 README | **Yes** (2 worktrees) | Disjoint paths: tests and UI fixes vs `README.md` | dotnet-code-reviewer (T-01.9); architecture-compliance-reviewer (T-01.10) | — |
 | 2-int | T-01.11 CI pipeline and repository automation | No (integration) | Owns the CI hotspot; must run the final test projects | azure-infra-reviewer | `lab-01-wave-2` |
 | End | Whole lab diff `main...lab/01` | — | — | architecture-compliance-reviewer | `lab-01` (on `main` after merge) |
