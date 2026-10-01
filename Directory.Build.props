@@ -13,6 +13,8 @@
     <!-- Required for IDE0005 (unused usings) to be reported during build; public API docs are not mandatory. -->
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- XML doc files are only needed for the IDE0005 build check; keep them out of publish output and images. -->
+    <PublishDocumentationFiles>false</PublishDocumentationFiles>
     <!--
       Only High/Critical advisories fail the build (TreatWarningsAsErrors), matching the
       NFR-027 CI gate; low/moderate advisories are handled by Dependabot without blocking builds.
