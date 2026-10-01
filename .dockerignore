@@ -1,0 +1,39 @@
+# Docker build context filter (docs/labs/lab-01-walking-skeleton.md §6.6).
+# Context is the repository root; only what the Web image needs is sent.
+
+# Build output
+**/bin/
+**/obj/
+**/[Tt]est[Rr]esult*/
+**/publish/
+
+# Not part of the image
+tests/
+docs/
+.git/
+.github/
+.claude/
+.vs/
+.vscode/
+.idea/
+**/node_modules/
+**/.DS_Store
+**/*.swp
+**/launchSettings.json
+**/*.md
+compose.yaml
+**/Dockerfile*
+.dockerignore
+.mcp.json
+.gitignore
+.gitattributes
+
+# Secrets and local-only files: never in the image
+**/*.user
+**/secrets.json
+**/.env*
+.env*
+**/*.pfx
+**/*.pem
+**/*.key
+**/appsettings.*.local.json
