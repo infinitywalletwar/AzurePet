@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+
+  <!-- Razor SDK so that bUnit tests can be written as .razor files as well as .cs files. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\InPolsure.SharedKernel\InPolsure.SharedKernel.csproj" />
+    <ProjectReference Include="..\..\src\InPolsure.Ui\InPolsure.Ui.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="bunit" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit.runner.visualstudio" />
+    <PackageReference Include="xunit.v3" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+</Project>

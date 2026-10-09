@@ -4,7 +4,7 @@
 |---|---|
 | **Product** | InPolsure. The repository is still named `AzurePet`. |
 | **Status** | **Draft v2.1**, revised after the architecture review and the compliance re-review (phase 3). All ADRs 0001–0017 were **Accepted** by the user on 2026-10-01 (with PLAN v3.1 and REQUIREMENTS v2.2). |
-| **Phase** | 3: Architecture review (revision) → 4: Architecture decisions |
+| **Phase** | Incremental implementation (Lab 01) |
 | **Owner** | solution-architect |
 | **Last updated** | 2026-10-01 |
 | **Inputs** | [`PLAN.md`](PLAN.md) v3.1 (**approved**), [`REQUIREMENTS.md`](REQUIREMENTS.md) v2.2 (**approved**), architecture-compliance review of v1 and re-review of v2, user decisions of 2026-10-01 |

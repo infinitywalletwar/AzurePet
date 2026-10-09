@@ -3,10 +3,10 @@
 | | |
 |---|---|
 | **Product** | InPolsure. The repository is still named `AzurePet`. |
-| **Status** | **Approved v1** (2026-10-01). Proposed by solution-architect. |
-| **Phase** | 5: Lab roadmap |
+| **Status** | **Approved v1** (2026-10-01). Proposed by solution-architect. Patch 2026-10-01 (user-approved): task branches renamed `lab/NN/T-NN.x-slug` → `task/NN/T-NN.x-slug` (§3.1). |
+| **Phase** | Incremental implementation (Lab 01) |
 | **Owner** | solution-architect |
-| **Last updated** | 2026-10-01 |
+| **Last updated** | 2026-10-09 |
 | **Consistent with** | [ADR-0009](architecture/decisions/0009-iac-and-cicd.md) (IaC, CI/CD, OIDC), [ADR-0012](architecture/decisions/0012-secrets-and-configuration.md) (identities, secrets), [ADR-0014](architecture/decisions/0014-environments-lifecycle.md) (environments lifecycle), [ADR-0016](architecture/decisions/0016-pre-domain-mode.md) (pre-domain mode), [ADR-0010](architecture/decisions/0010-observability.md) (alerts) |
 
 This document describes how code gets from a lab spec to `main` and from
@@ -74,10 +74,16 @@ performed by the user (or by a pipeline the user triggers):
 |---|---|---|---|---|
 | `main` | — | Always green; deployed to dev (from Lab 02) | — | — |
 | `lab/NN` | `main` at lab start | One lab | `main` via PR | **Merge commit** (§3.3) |
-| `lab/NN/T-NN.x-slug` | current tip of `lab/NN` at wave start | One task, one worktree, one developer agent | `lab/NN` | **Squash** (local) |
+| `task/NN/T-NN.x-slug` (integration: `task/NN/T-NN.y-integration`) | current tip of `lab/NN` at wave start | One task, one worktree, one developer agent | `lab/NN` | **Squash** (local) |
 | `docs/<slug>` | `main` | Architect changes outside a lab (ADRs, specs, roadmap) | `main` via PR | Squash |
 | `fix/<slug>` | `main` | Urgent fix between labs (R3, R7) | `main` via PR | Squash |
 | `dependabot/*` | (GitHub) | Dependency updates | `main` via PR | Squash |
+
+Task branches use the `task/` prefix because git cannot hold both a
+branch `lab/NN` and branches under `lab/NN/…` (the ref
+`refs/heads/lab/NN` is a file, so `refs/heads/lab/NN/…` cannot be
+created); the prefix also keeps them out of the `ci.yml` trigger glob
+`lab/*`.
 
 Task branches stay local (never pushed). `lab/NN` is pushed after each
 wave tag (with confirmation), so CI also runs on it (`ci.yml` triggers
@@ -209,7 +215,7 @@ For wave K of lab NN, at the current tip of `lab/NN`:
 ```bash
 git switch lab/NN
 git pull --ff-only            # only if lab/NN was pushed and changed remotely
-git worktree add ../AzurePet.worktrees/T-NN.x -b lab/NN/T-NN.x-slug lab/NN
+git worktree add ../AzurePet.worktrees/T-NN.x -b task/NN/T-NN.x-slug lab/NN
 ```
 
 - Worktrees live **outside** the repository folder
@@ -241,7 +247,7 @@ Each developer agent receives:
 1. The agent runs `Verify`. Red `Verify` means the task is not ready for
    review.
 2. The orchestrator runs the reviewers listed in the task's `Review`
-   field on the task branch diff (`lab/NN...lab/NN/T-NN.x-slug`).
+   field on the task branch diff (`lab/NN...task/NN/T-NN.x-slug`).
 3. Findings are **Blocker** (must fix), **Major** (fix in this task
    unless the user accepts it) or **Minor/Nit** (optional, may become a
    follow-up).
@@ -262,8 +268,8 @@ When all non-deferred tasks of the wave have passed:
 
 ```bash
 git switch lab/NN
-git merge --squash lab/NN/T-NN.2-slug && git commit -m "T-NN.2: <title>"
-git merge --squash lab/NN/T-NN.3-slug && git commit -m "T-NN.3: <title>"
+git merge --squash task/NN/T-NN.2-slug && git commit -m "T-NN.2: <title>"
+git merge --squash task/NN/T-NN.3-slug && git commit -m "T-NN.3: <title>"
 # … in ascending task order
 ```
 
@@ -273,7 +279,7 @@ git merge --squash lab/NN/T-NN.3-slug && git commit -m "T-NN.3: <title>"
   merge (usually by rebasing that task branch onto `lab/NN` in its
   worktree and re-running `Verify`).
 - Then the **integration task**: a new worktree and branch
-  `lab/NN/T-NN.y-integration` from the updated `lab/NN`, one developer
+  `task/NN/T-NN.y-integration` from the updated `lab/NN`, one developer
   agent, its own `Verify` and reviewers, squash-merged like any task.
 - On `lab/NN`, the orchestrator runs the full gate:
   `dotnet build <solution> -c Release`, `dotnet test <solution> -c Release`,
@@ -288,7 +294,7 @@ git merge --squash lab/NN/T-NN.3-slug && git commit -m "T-NN.3: <title>"
 
 ```bash
 git worktree remove ../AzurePet.worktrees/T-NN.x   # for each task
-git branch -D lab/NN/T-NN.x-slug                    # squash-merged, so -D is required
+git branch -D task/NN/T-NN.x-slug                   # squash-merged, so -D is required
 git worktree prune
 ```
 
@@ -301,8 +307,8 @@ The lab PR, merge, `lab-NN` tag and release follow §4 steps 4–8.
 | Moment | Command |
 |---|---|
 | Start lab | `git switch main && git pull --ff-only && git switch -c lab/NN` |
-| Start task | `git worktree add ../AzurePet.worktrees/T-NN.x -b lab/NN/T-NN.x-slug lab/NN` |
-| Merge task | `git switch lab/NN && git merge --squash lab/NN/T-NN.x-slug && git commit -m "T-NN.x: <title>"` |
+| Start task | `git worktree add ../AzurePet.worktrees/T-NN.x -b task/NN/T-NN.x-slug lab/NN` |
+| Merge task | `git switch lab/NN && git merge --squash task/NN/T-NN.x-slug && git commit -m "T-NN.x: <title>"` |
 | Tag wave | `git tag lab-NN-wave-K && git push origin lab/NN lab-NN-wave-K` (confirmed) |
 | Open PR | `gh pr create --base main --head lab/NN --title "Lab NN: <name>" --body-file <report>` |
 | After merge (user) | `git switch main && git pull --ff-only && git tag lab-NN && git push origin lab-NN` |
@@ -654,7 +660,7 @@ Follow ADR-0016 §4 and the Lab 18 spec. Until then, no prod exists and
 | # | Gap | Proposal | Needs |
 |---|---|---|---|
 | G-1 | ADR-0009 item 4 asks for `what-if` on pull requests, but no identity is defined for PR jobs: fork PRs get no OIDC token, and the dev federated credential is bound to GitHub environment `dev` (a PR job targeting `dev` would receive a Contributor-level token for PR code). | Lab 02 spec: Bicep lint/build on every PR (no Azure access); `what-if` against dev only for PRs from branches of this repository, in a job that targets environment `dev` and runs only after the owner approves the run, **or** `what-if` inside `cd-dev.yml` before deployment with the PR showing lint only. | **Decided 2026-10-01:** `what-if` inside `cd-dev.yml` before deployment; PRs run lint/build only. A short ADR amending ADR-0009 item 4 is written before the Lab 02 spec. |
-| G-2 | The .NET 10 Blazor Web App renders an inline import-map `<script>` (`ImportMap` component). ADR-0011's CSP is `script-src 'self'`. | Lab 01 removes the import map if not needed; otherwise a per-request SHA-256 hash for it (Lab 01 spec §6.1). | If the hash is needed: ADR clarification of the CSP string (architect) |
+| G-2 | The .NET 10 Blazor Web App renders an inline import-map `<script>` (`ImportMap` component). ADR-0011's CSP is `script-src 'self'`. | Lab 01 removes the import map if not needed; otherwise a per-request SHA-256 hash for it (Lab 01 spec §6.1). | **Closed 2026-10-09:** the import map was removed in T-01.9; no hash was needed and ADR-0011's CSP string is unchanged. |
 | G-3 | ADR-0012's teardown action list may not cover extension and child resources (diagnostic settings on the Container Apps environment, managed certificates after the gate, role assignments scoped to workload resources). | Lab 09 derives the list from the real `workload.bicep` and test-runs teardown. Adding resource types is foreseen by ADR-0012; anything needing `Microsoft.Authorization/*` would contradict it. | Superseding ADR only if `Microsoft.Authorization/*` is required |
 | G-4 | Merge method for lab PRs is not covered by an ADR. | Merge commit (§3.3). | **Confirmed 2026-10-01** |
 | G-5 | Dependabot PRs go straight to `main`, outside the lab flow. | Allowed when CI is green; the user merges them (squash) between waves or labs, not during a lab's final PR review. | **Confirmed 2026-10-01** |

@@ -1,0 +1,32 @@
+@page "/Error"
+@layout MainLayout
+@using System.Diagnostics
+
+@* Target of UseExceptionHandler("/Error") outside Development. It never shows exception details or stack
+   traces; only the trace or request id, so support can find the logged error (ADR-0010). *@
+<PageTitle>Error - InPolsure</PageTitle>
+
+<h1>Something went wrong</h1>
+
+<Notice Severity="NoticeSeverity.Error">
+    An error occurred while processing your request. Please try again later.
+</Notice>
+
+@if (!string.IsNullOrEmpty(RequestId))
+{
+    <p>
+        If the problem persists, contact support and quote this request ID: <code>@RequestId</code>
+    </p>
+}
+
+<p><a href="/">Go to the home page</a></p>
+
+@code {
+    [CascadingParameter]
+    private HttpContext? HttpContext { get; set; }
+
+    private string? RequestId { get; set; }
+
+    protected override void OnInitialized() =>
+        RequestId = Activity.Current?.Id ?? HttpContext?.TraceIdentifier;
+}

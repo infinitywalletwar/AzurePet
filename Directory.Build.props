@@ -1,0 +1,36 @@
+<Project>
+
+  <!-- Conventions for every project (docs/labs/lab-01-walking-skeleton.md §5). -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <Deterministic>true</Deterministic>
+    <IsPackable>false</IsPackable>
+    <!-- Required for IDE0005 (unused usings) to be reported during build; public API docs are not mandatory. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <!-- XML doc files are only needed for the IDE0005 build check; keep them out of publish output and images. -->
+    <PublishDocumentationFiles>false</PublishDocumentationFiles>
+    <!--
+      Only High/Critical advisories fail the build (TreatWarningsAsErrors), matching the
+      NFR-027 CI gate; low/moderate advisories are handled by Dependabot without blocking builds.
+    -->
+    <NuGetAuditLevel>high</NuGetAuditLevel>
+  </PropertyGroup>
+
+  <!-- Versioning (docs/DELIVERY.md §9). The SDK appends +<git sha> to InformationalVersion. -->
+  <PropertyGroup>
+    <VersionPrefix>0.1.0</VersionPrefix>
+    <Product>InPolsure</Product>
+  </PropertyGroup>
+
+  <!-- Reproducible paths in CI builds (GitHub Actions sets CI=true). -->
+  <PropertyGroup Condition="'$(CI)' == 'true'">
+    <ContinuousIntegrationBuild>true</ContinuousIntegrationBuild>
+  </PropertyGroup>
+
+</Project>

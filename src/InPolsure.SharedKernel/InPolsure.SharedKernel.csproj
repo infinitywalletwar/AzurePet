@@ -1,0 +1,5 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Must not reference other InPolsure assemblies or ASP.NET Core (lab-01 AC-14). -->
+
+</Project>

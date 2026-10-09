@@ -1,0 +1,19 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Packages.props" />
+    <File Path="global.json" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/InPolsure.SharedKernel/InPolsure.SharedKernel.csproj" />
+    <Project Path="src/InPolsure.Ui/InPolsure.Ui.csproj" />
+    <Project Path="src/InPolsure.Web/InPolsure.Web.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/InPolsure.ArchitectureTests/InPolsure.ArchitectureTests.csproj" />
+    <Project Path="tests/InPolsure.UnitTests/InPolsure.UnitTests.csproj" />
+    <Project Path="tests/InPolsure.Web.IntegrationTests/InPolsure.Web.IntegrationTests.csproj" />
+    <Project Path="tests/InPolsure.Web.UiTests/InPolsure.Web.UiTests.csproj" />
+  </Folder>
+</Solution>

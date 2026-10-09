@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Approved** (2026-10-01). Proposed by solution-architect. |
+| **Status** | **Approved** (2026-10-01). Proposed by solution-architect. Patch 2026-10-01 (user-approved): test runner switched to Microsoft.Testing.Platform via `global.json`, and the wave-0 build conventions (NuGet audit level, IDE0005, test SDKs, CA1707, Blazor template default) recorded in §5. Notes on MTP syntax and exit code 8 added to T-01.10 and T-01.11. Patch 2026-10-01 (user-approved, after wave 1 batch 1 reviews): accepted T-01.3 deviations and config keys (§6.1), health excluded from HTTP metrics and GET/HEAD only (§6.2), builder-style extension exception (§5), path-based trace filter and query redaction note (§6.3), T-01.8 pipeline order, logging, log-content test and `PublishDocumentationFiles` (§9). Patch 2026-10-01 (user decision, after T-01.6): align on .NET SDK `10.0.401` everywhere — T-01.8 bumps `global.json` (local prerequisite in §8); T-01.11 uses `setup-dotnet` with `global-json-file`, passes `SOURCE_REVISION_ID` to `docker build`, and extends Dependabot `docker` updates to the root `compose.yaml` (§9). Patch 2026-10-01 (user decision, after T-01.8 review; T-01.8 merged as is): §6.1 corrected — Blazor's `frame-ancestors 'none'` CSP is on every Razor component response and stays enforced in report-only mode; `HEAD /` returns 405, so page header checks use GET (T-01.8 Verify, §6.7, T-01.11; qualified in the 2026-10-09 end-of-lab pass: 405 in the published image, 404 when run from build output); T-01.5 and T-01.8 review Minors and the AC-08 outage simulation carried to T-01.9 (Owns extended to `tests/InPolsure.Web.IntegrationTests/Host/**` and `tests/InPolsure.UnitTests/Ui/**`); new §13 Follow-ups. Patch 2026-10-09 (user decision, after the 2026-10-02 implementation review): C-01 (health method rejection returns 400 via status-code re-execution) assigned to T-01.9; `src/InPolsure.Web/Program.cs` added to T-01.9 Shared files for that fix only. Patch 2026-10-09 (user decision, after T-01.10 review): test reports use xUnit's built-in `--report-xunit-trx` (MTP `--report-trx`/`--coverage` need packages not in §5 and exit 5); code coverage deferred to the lab that needs it (DELIVERY §8 sets no code-coverage gate). Patch 2026-10-09 (end-of-lab docs pass): HEAD / behaviour qualified, §6.6/§6.7 aligned with implementation, inline-script rule clarified, §13 updated. |
 | **Lab branch** | `lab/01` (from `main`) |
 | **Version after the lab** | `0.1.0` ([`DELIVERY.md`](../DELIVERY.md) §9) |
 | **Roadmap** | [`ROADMAP.md`](../ROADMAP.md#lab-01-walking-skeleton) |
@@ -137,16 +137,50 @@ project is created in this lab.
 - Tests: xUnit v3; test names `Method_or_behaviour_condition_expected`;
   plain xUnit assertions (no assertion library, to avoid licence and
   dependency churn).
-- All UI and log texts in English (NFR-082). No inline `style`
-  attributes, no `<style>` or `<script>` elements in our markup
-  (ADR-0017 item 4).
+- **Test runner: Microsoft.Testing.Platform (MTP).** `global.json` sets
+  `"test": { "runner": "Microsoft.Testing.Platform" }`. Reason: xunit.v3
+  4.x runs only on MTP with the .NET 10 SDK; VSTest-mode `dotnet test`
+  fails ("Testing with VSTest target is no longer supported").
+  Alternative considered: pin xunit.v3 to 3.2.2 and stay on VSTest —
+  rejected because it is not the latest stable and VSTest is being
+  phased out. Trade-offs: `dotnet test InPolsure.slnx -c Release` and
+  `dotnet test <project> --filter "FullyQualifiedName~X"` work
+  unchanged, but (a) a filter that matches zero tests exits with
+  **code 8** (not 0), and (b) reporting uses xUnit v3's built-in MTP
+  reporter (`--report-xunit-trx --results-directory <dir>`), not
+  VSTest's `--logger trx` / `--collect`. MTP's `--report-trx` and
+  `--coverage` need `Microsoft.Testing.Extensions.TrxReport` /
+  `.CodeCoverage`, which are not in this package list (they exit with
+  code 5); no code coverage in Lab 01 — it is added, with its package,
+  by the lab that needs it. `Microsoft.NET.Test.Sdk` and
+  `xunit.runner.visualstudio` stay in the package list for IDE
+  test-explorer compatibility.
+- `NuGetAuditLevel` `high`: only high/critical advisories break the
+  build under `TreatWarningsAsErrors`; low/moderate ones are still
+  reported but do not break builds (consistent with NFR-027).
+- IDE0005 (unused usings) is enforced in build: this requires
+  `GenerateDocumentationFile` true, with `NoWarn` `CS1591` so missing
+  XML docs do not fail the build.
+- Project SDKs: `InPolsure.UnitTests` uses `Microsoft.NET.Sdk.Razor`
+  (bUnit `.razor` tests); `InPolsure.Web.IntegrationTests` and
+  `InPolsure.Web.UiTests` use `Microsoft.NET.Sdk.Web`.
+- CA1707 (underscores in identifiers) is disabled under `tests/**` to
+  allow the test naming convention above.
+- `BlazorDisableThrowNavigationException` true in `InPolsure.Web.csproj`
+  is kept as the accepted .NET 10 Blazor Web App template default.
+- All UI and log texts in English (NFR-082). No inline `<script>` or
+  `<style>` elements and no `style` attributes in our markup;
+  same-origin `<script src>` is allowed (ADR-0017 item 4, AC-17).
 - Configuration through strongly typed options with
   `ValidateDataAnnotations().ValidateOnStart()` (ADR-0012 §5).
 - Every public extension method that wires a feature follows the
   pattern `AddInPolsure<Feature>(this IServiceCollection, IConfiguration)`
   and `UseInPolsure<Feature>` / `MapInPolsure<Feature>` on the app. This
   lets parallel tasks deliver features without editing `Program.cs`
-  (only the integration task wires them).
+  (only the integration task wires them). **Exception:** a feature that
+  must configure logging or read the host environment uses
+  `AddInPolsure<Feature><TBuilder>(this TBuilder) where TBuilder : IHostApplicationBuilder`,
+  as in Aspire ServiceDefaults (first case: `AddInPolsureObservability`).
 
 ### Packages added in wave 0 (all later tasks use only these)
 
@@ -176,9 +210,12 @@ changed.
   **response header** (a `<meta>` CSP cannot carry `frame-ancestors`;
   [Microsoft Learn: Blazor CSP](https://learn.microsoft.com/aspnet/core/blazor/security/content-security-policy?view=aspnetcore-10.0)).
 - Blazor Web Apps add their own `Content-Security-Policy: frame-ancestors 'self'`
-  header for Interactive Server endpoints; set
+  header (default value); set
   `AddInteractiveServerRenderMode(o => o.ContentSecurityFrameAncestorsPolicy = "'none'")`
-  so both headers agree (browsers enforce every CSP header).
+  so both headers agree (browsers enforce every CSP header). Observed in
+  T-01.8: Blazor adds this header to **every Razor component (HTML)
+  response**, not only Interactive Server endpoints; static assets and
+  health responses carry only our CSP.
 - The .NET 10 Blazor Web App template has two known CSP traps (same
   Microsoft Learn page): the `NavMenu` component's inline `onclick`
   handler, and the `<ImportMap />` component, which renders an **inline
@@ -203,13 +240,50 @@ changed.
 - Options: `Security:Csp:ReportOnly` (default `false`) switches the
   header name to `Content-Security-Policy-Report-Only`. Validate the
   options at startup.
+- **Accepted in T-01.3 review (2026-10-01):**
+  - `X-Frame-Options: DENY` is also sent. It overrides antiforgery's
+    `SAMEORIGIN`, matches `frame-ancestors 'none'`, and protects while
+    CSP is report-only and for legacy browsers and scanners.
+  - `upgrade-insecure-requests` is added only to the **enforced** CSP
+    when HSTS is enabled; it is omitted in report-only mode (browsers
+    ignore it there and log a console CSP warning that would trip
+    T-01.9's violation detector).
+  - HSTS is emitted by our security-headers middleware regardless of
+    request scheme. The app must **not** call `UseHsts()` (it skips
+    plain HTTP and localhost; TLS ends at the ingress, and forwarded
+    headers arrive only in Lab 02) nor `UseHttpsRedirection()`.
+  - Config keys: `Security:Csp:ReportOnly` (bool, default `false`),
+    `Security:Hsts:Enabled` (bool), `Security:Hsts:MaxAgeSeconds` (int,
+    ≥ 31536000, validated at startup even when HSTS is disabled),
+    `Security:Hsts:IncludeSubDomains` (bool, default `false`, because
+    tenant and dev/test hosts share the parent domain per ADR-0016).
+    The HSTS options class is `SecurityHstsOptions`.
+  - Every Razor component (HTML) response carries **two** CSP headers:
+    ours plus Blazor's `Content-Security-Policy: frame-ancestors 'none'`
+    (corrected after T-01.8 review: not only Interactive Server
+    endpoints). Static assets and `/health/*` carry only ours.
+  - With `Security:Csp:ReportOnly=true` only **our** header switches to
+    `Content-Security-Policy-Report-Only`; Blazor's header stays
+    **enforced**. Accepted: it only restricts framing and agrees with
+    `X-Frame-Options: DENY`.
+  - Razor component endpoints accept only GET and POST. `HEAD /` (and
+    `HEAD` on an unknown path) returns 405 (`Allow: GET, POST`) in the
+    published image, 404 when run from build output (`dotnet run`,
+    tests: the `MapStaticAssets` fallback `{**path:file}` [GET, HEAD]
+    exists only with the build-output manifest); use GET for header
+    checks either way (health endpoints accept HEAD, §6.2). Header
+    checks on pages (Verify blocks, CI):
+    `curl -fsS -D - -o /dev/null http://localhost:8080/ | grep -i '^content-security-policy:'`.
 
 ### 6.2 Health
 
 - `/health/live`: no checks (process alive). `/health/ready`: only
   checks tagged `ready`; none exist yet (database checks come in
   Lab 03, prod-only per ADR-0010 item 6). Both anonymous,
-  `Cache-Control: no-store`, plain-text status, excluded from tracing.
+  `Cache-Control: no-store`, plain-text status, GET and HEAD only,
+  excluded from tracing **and** from ASP.NET Core HTTP metrics
+  (`.DisableHttpMetrics()`). Readiness checks added in later labs must
+  use the tag `ready`.
 
 ### 6.3 Observability
 
@@ -218,11 +292,18 @@ changed.
 - Tracing: ASP.NET Core and HttpClient instrumentation; filter out
   `/health/*` and static assets. Metrics: ASP.NET Core, HttpClient,
   runtime. Logs: OTel logging provider with scopes.
+- The trace filter is **path-based** (it runs before routing): no spans
+  for `/health*`, `/_framework*`, `/_content*`, and paths whose last
+  segment has a file extension. Note for later labs: routes ending with
+  a dotted segment (e.g. Lab 06 attachment downloads, Lab 13
+  `/theme.css`) require revisiting this filter.
 - Export with `UseOtlpExporter()` **only when**
   `OTEL_EXPORTER_OTLP_ENDPOINT` is set; nothing is exported otherwise
   (tests, CI). Azure Monitor export is Lab 02.
 - Confirm that the ASP.NET Core instrumentation version in use redacts
   query-string values by default (NFR-042); if not, configure it.
+  Confirmed: redaction is the default in OpenTelemetry instrumentation
+  1.19 and is covered by a runtime test.
 - Non-Development: JSON console formatter. Never log request or
   response bodies.
 
@@ -275,10 +356,11 @@ changed.
 
 - Multi-stage `src/InPolsure.Web/Dockerfile`, build context = repository
   root (needs `Directory.*.props`, `global.json`). Build on
-  `mcr.microsoft.com/dotnet/sdk:10.0`, run on
-  `mcr.microsoft.com/dotnet/aspnet:10.0-noble-chiseled` (non-root by
-  default, no shell; smaller attack surface). Pin tags; Dependabot keeps
-  them current. Restore as a separate cached layer.
+  `mcr.microsoft.com/dotnet/sdk:10.0.401@sha256:…`, run on
+  `mcr.microsoft.com/dotnet/aspnet:10.0.12-noble-chiseled@sha256:…`
+  (non-root by default, no shell; smaller attack surface). Both pinned
+  to a patch tag plus digest; Dependabot updates both. Restore as a
+  separate cached layer.
 - Port 8080 (`ASPNETCORE_HTTP_PORTS`, the image default). No
   `HEALTHCHECK` instruction (Container Apps uses its own probes; the
   chiseled image has no shell or curl).
@@ -307,11 +389,16 @@ changed.
   fail on `High` or `Critical` (NFR-027).
 - `container` job: `docker build` (no push, no registry login), run the
   image, poll `/health/live` and `/health/ready`, assert the CSP header
-  on `/`, stop the container.
+  on `/`, stop the container. The CSP assertion uses the GET-based check
+  of §6.1 (`curl -fsS -D - -o /dev/null http://localhost:8080/ | grep -i '^content-security-policy:'`),
+  not `curl -I`: `HEAD /` returns 405 in the published image (404 when
+  run from build output), and the CI shell runs with `pipefail`, so a
+  failing `curl` fails the step.
 - CodeQL uses **default setup**, enabled by the owner in repository
   settings (no workflow file), ADR-0009 item 6.
 - Dependabot: `nuget` (root), `github-actions`, `docker`
-  (`src/InPolsure.Web`), weekly, minor and patch updates grouped.
+  (`/src/InPolsure.Web`, the Dockerfile) and `docker-compose` (`/`, the
+  root `compose.yaml`), weekly, minor and patch updates grouped.
 
 ## 7. Acceptance criteria
 
@@ -333,7 +420,7 @@ changed.
 | AC-14 | Architecture tests fail when `InPolsure.SharedKernel` references another InPolsure assembly or ASP.NET Core, when `InPolsure.Ui` references `InPolsure.Web`, or when any non-test assembly references a test assembly | Architecture tests (each rule has a test that would fail on violation) |
 | AC-15 | `ci.yml`: least-privilege permissions, all third-party actions SHA-pinned, no secrets, no `pull_request_target`, jobs `build-test`, `ui-tests`, `container`, `dependency-review`; all green on the lab PR | azure-infra-reviewer, CI run |
 | AC-16 | `dependabot.yml` covers NuGet, GitHub Actions and Docker | Review |
-| AC-17 | No third-party UI library or CSS framework; no inline `style` attributes, `<style>` or `<script>` blocks in `src/**/*.razor` | Review, simple grep in CI optional |
+| AC-17 | No third-party UI library or CSS framework; no inline `<script>` or `<style>` elements and no `style` attributes in `src/**/*.razor` (same-origin `<script src>` allowed) | Review, simple grep in CI optional |
 | AC-18 | `README.md` lets a new developer build, test, run locally and run UI tests in ≤ 15 minutes on a machine with the .NET 10 SDK, Docker and PowerShell 7 | Review |
 
 ## 8. Human prerequisites
@@ -353,6 +440,9 @@ Before wave 0 (owner; agents must not do these):
    deletions. Required status checks are added after the lab PR has run
    CI once (DoD item 6).
 5. Locally: .NET 10 SDK, Docker, PowerShell 7 (`pwsh`), Git ≥ 2.40.
+   Before T-01.8 merges, the .NET SDK must be **10.0.401 or a later
+   10.0.4xx** (T-01.8 pins `global.json` to `10.0.401` with
+   `rollForward: latestFeature`).
 
 Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
 
@@ -511,18 +601,40 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
 - **Wave:** 1 (integration, runs after T-01.2 to T-01.7 are merged into
   `lab/01`).
 - **Description:** wire all features in `Program.cs` in this order:
-  observability → exception handler/HSTS → security headers → static
-  assets → antiforgery → health endpoints → Razor components. Add
-  configuration to `appsettings.json` (`Security`, `Diagnostics`,
-  logging levels) and `appsettings.Development.json`. Add full-host
-  integration tests through `WebApplicationFactory<Program>` for AC-04,
-  AC-05, AC-06, AC-10, AC-11. Re-run the container check of T-01.6 for
-  `/health/live`.
+  observability (`builder.AddInPolsureObservability()` first) →
+  exception handler → security headers (emits HSTS; no `UseHsts` and no
+  `UseHttpsRedirection`, §6.1) → static assets → antiforgery → health
+  endpoints → Razor components. Configuration: `appsettings.json` gets
+  the `Security:*` keys of §6.1 (`Security:Hsts:Enabled` `true`;
+  `false` in `appsettings.Development.json`), `Diagnostics` and logging
+  levels; set `Microsoft.AspNetCore.Hosting.Diagnostics` to `Warning` in
+  every environment, because the hosting "Request starting" log
+  contains the raw query string (NFR-042). Add full-host integration
+  tests through `WebApplicationFactory<Program>` for AC-04, AC-05,
+  AC-06 (expect two CSP header values on interactive endpoints, §6.1),
+  AC-10, AC-11, plus a log-content test (ADR-0010 item 4): a request
+  with `?token=secret-value` produces no log record containing
+  `secret-value`. Add `<PublishDocumentationFiles>false</PublishDocumentationFiles>`
+  to `Directory.Build.props` (otherwise XML doc files land in the
+  container image). Bump the SDK pin in `global.json` to `10.0.401`
+  (keep `rollForward: latestFeature`, `allowPrerelease: false`; user
+  decision 2026-10-01): with `TreatWarningsAsErrors` and
+  `AnalysisLevel=latest-recommended`, a different SDK feature band can
+  add analyzer warnings that break only the image build or only CI, so
+  local builds, the Dockerfile SDK image
+  (`mcr.microsoft.com/dotnet/sdk:10.0.401`, whose bundled runtime 10.0.12
+  matches `aspnet:10.0.12-noble-chiseled`) and CI (`setup-dotnet` with
+  `global-json-file`, T-01.11) must use the same SDK band (10.0.4xx).
+  Fix any new analyzer findings the bump surfaces. Re-run the container
+  check of T-01.6 for `/health/live`.
 - **Depends on:** T-01.2, T-01.3, T-01.4, T-01.5, T-01.6, T-01.7.
 - **Owns:** `src/InPolsure.Web/Program.cs`,
   `src/InPolsure.Web/appsettings*.json`,
-  `tests/InPolsure.Web.IntegrationTests/Host/**`.
-- **Shared files:** `Program.cs`, `appsettings*.json`.
+  `tests/InPolsure.Web.IntegrationTests/Host/**`,
+  `Directory.Build.props` (the `PublishDocumentationFiles` line only),
+  `global.json` (the SDK `version` only).
+- **Shared files:** `Program.cs`, `appsettings*.json`,
+  `Directory.Build.props`, `global.json`.
 - **Acceptance:** AC-01 to AC-06, AC-10, AC-11 on the real host;
   container answers `/health/live`.
 - **Verify:**
@@ -532,7 +644,7 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
   dotnet format InPolsure.slnx --verify-no-changes
   docker build -f src/InPolsure.Web/Dockerfile -t inpolsure-web:local .
   docker run -d --rm -p 127.0.0.1:8080:8080 --name inpolsure-web inpolsure-web:local
-  curl -fsS http://localhost:8080/health/live && curl -fsSI http://localhost:8080/ | grep -i content-security-policy
+  curl -fsS http://localhost:8080/health/live && curl -fsS -D - -o /dev/null http://localhost:8080/ | grep -i '^content-security-policy:'
   docker stop inpolsure-web
   ```
 - **Review:** dotnet-code-reviewer.
@@ -547,12 +659,49 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
   owned UI files (wrap or replace offending components; `ImportMap`
   handling per §6.1), then run enforced. Report any change to the CSP
   string.
+  **Carried review items** (user decision 2026-10-01; fix in owned files,
+  each with a test):
+  - From T-01.5 review (accessibility, `src/InPolsure.Ui/**`):
+    - Focus indicator contrast: the amber `--color-focus` on
+      `--brand-primary` is about 1.3:1; WCAG 2.4.11 / 1.4.11 need
+      ≥ 3:1. Give `.skip-link` a contrasting style and add
+      `.app-header :focus-visible { outline-color: var(--brand-on-primary); }`.
+      Cover with the axe run and a focus check in the UI tests.
+    - `Button` silently drops a caller's `class` attribute: merge it
+      with the component's own classes (or document that it is not
+      supported); add a bUnit test either way.
+  - From T-01.8 review (host tests, `tests/InPolsure.Web.IntegrationTests/Host/**`):
+    - The log-privacy test gets a **positive control**: with
+      `Logging:LogLevel:Microsoft.AspNetCore.Hosting.Diagnostics=Information`
+      the `secret-value` **does** appear in the captured logs, proving
+      the test can detect a leak.
+    - The 500 error-page test also asserts both CSP values (ours and
+      Blazor's `frame-ancestors 'none'`) and `X-Frame-Options: DENY`.
+    - Add a one-line comment that the error-page test relies on the
+      probe page reading `IOptions<DiagnosticsOptions>`.
+  - AC-08 outage simulation: kill the server hard (dispose the Kestrel
+    host without graceful shutdown) or block the network (Playwright
+    `context.SetOfflineAsync(true)`). A graceful stop is not a valid
+    simulation: the circuit reconnects during the shutdown timeout.
+  - From the 2026-10-02 implementation review (user decision
+    2026-10-09), C-01: the global
+    `UseStatusCodePagesWithReExecute("/not-found", ...)` in `Program.cs`
+    re-executes `POST /health/live` and `POST /health/ready` (405) as
+    POST to the Razor not-found endpoint, which returns 400; §6.2
+    requires 405. Restrict the HTML not-found re-execution to GET/HEAD
+    404 requests so other statuses pass through unchanged. Add a
+    full-host test: POST to both health endpoints returns 405 with
+    `Allow: GET, HEAD`.
 - **Depends on:** T-01.8.
-- **Owns:** `tests/InPolsure.Web.UiTests/**`; for CSP fixes only:
+- **Owns:** `tests/InPolsure.Web.UiTests/**`;
+  `tests/InPolsure.Web.IntegrationTests/Host/**` (carried T-01.8 test
+  items and the C-01 test only); for CSP and carried accessibility fixes only:
   `src/InPolsure.Ui/**`, `src/InPolsure.Web/Components/**`,
-  `src/InPolsure.Web/wwwroot/**`.
+  `src/InPolsure.Web/wwwroot/**`; for the `Button` bUnit test only:
+  `tests/InPolsure.UnitTests/Ui/**`.
 - **Shared files:** `src/InPolsure.Web/Components/App.razor` (only if
-  the import-map hash is required).
+  the import-map hash is required); `src/InPolsure.Web/Program.cs`
+  (C-01 status-code re-execution scope only).
 - **Acceptance:** AC-04, AC-07, AC-08 (or recorded manual check), AC-09
   with CSP enforced.
 - **Verify:**
@@ -560,6 +709,8 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
   dotnet build tests/InPolsure.Web.UiTests -c Release
   pwsh tests/InPolsure.Web.UiTests/bin/Release/net10.0/playwright.ps1 install --with-deps chromium
   dotnet test tests/InPolsure.Web.UiTests -c Release
+  dotnet test tests/InPolsure.UnitTests -c Release
+  dotnet test tests/InPolsure.Web.IntegrationTests -c Release
   ```
 - **Review:** dotnet-code-reviewer.
 
@@ -571,7 +722,11 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
   with `dotnet run` and with `docker compose`, the Aspire dashboard URL,
   installing Playwright browsers, the probe-page switch, where
   configuration lives, the "no secrets in the repository" rule
-  (user-secrets only). English.
+  (user-secrets only). English. Tests run on MTP (§5): document
+  `--report-xunit-trx --results-directory <dir>` for test reports (not
+  VSTest's `--logger` / `--collect`; MTP `--report-trx` / `--coverage`
+  need packages not in §5), and that a filter matching zero tests exits
+  with code 8.
 - **Depends on:** T-01.8.
 - **Owns:** `README.md`.
 - **Shared files:** none.
@@ -589,7 +744,26 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
 - **Description:** `.github/workflows/ci.yml` per §6.7 (jobs
   `build-test`, `ui-tests`, `container`, `dependency-review`),
   `.github/dependabot.yml`, `.github/pull_request_template.md` with the
-  checklist from [`DELIVERY.md`](../DELIVERY.md) §7.
+  checklist from [`DELIVERY.md`](../DELIVERY.md) §7. Tests run on MTP
+  (§5): `ci.yml` uses `--report-xunit-trx --results-directory <dir>`,
+  not `--report-trx` / `--coverage` (packages not in §5, exit 5) or
+  `--logger trx` / `--collect`; no coverage step in Lab 01. A
+  `--filter` step that matches zero tests exits with code 8 and fails
+  the job, so filters in `ci.yml` must match real tests; a filtered run
+  over the whole solution exits 8 if any test project has no matching
+  tests, so filter per project. Install the SDK with `setup-dotnet`
+  and `global-json-file: global.json` (same 10.0.4xx band as the
+  Dockerfile, T-01.8). The `container` job's `docker build` passes
+  `--build-arg SOURCE_REVISION_ID=${{ github.sha }}` (the Dockerfile
+  stamps `0.1.0+<sha>` into `InformationalVersion`,
+  [`DELIVERY.md`](../DELIVERY.md) §9). Dependabot `docker` updates must
+  also cover the root `compose.yaml` (pinned `aspire-dashboard` image),
+  e.g. a `docker-compose` ecosystem entry for `/` or a second `docker`
+  entry for `/`, in addition to `src/InPolsure.Web`. The `container`
+  job asserts the CSP header with the GET-based check of §6.1/§6.7
+  (`curl -fsS -D - -o /dev/null http://localhost:8080/ | grep -i '^content-security-policy:'`;
+  `HEAD /` returns 405 in the published image, 404 when run from build
+  output; the CI shell runs with `pipefail`).
 - **Depends on:** T-01.9, T-01.10.
 - **Owns:** `.github/**`.
 - **Shared files:** `.github/workflows/ci.yml` (CI hotspot).
@@ -609,7 +783,7 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
 |---|---|---|---|---|---|
 | 0 | T-01.1 Solution skeleton and conventions | No (one agent) | Creates every shared file and convention the others depend on | dotnet-code-reviewer, architecture-compliance-reviewer | `lab-01-wave-0` |
 | 1 | T-01.2 Health; T-01.3 Security headers and CSP; T-01.4 Observability; T-01.5 UI shell and probe page; T-01.6 Container; T-01.7 Architecture tests | **Yes** (6 worktrees) | Each owns its own folder; none edits `Program.cs`, `.slnx`, `Directory.*.props` or `appsettings*.json`; features are exposed as extension methods | dotnet-code-reviewer (T-01.2, .3, .4, .5, .7); azure-infra-reviewer (T-01.6) | — |
-| 1-int | T-01.8 Host wiring | No (integration) | Owns the shared `Program.cs` and `appsettings*.json` | dotnet-code-reviewer | `lab-01-wave-1` |
+| 1-int | T-01.8 Host wiring | No (integration) | Owns the shared `Program.cs`, `appsettings*.json`, one line of `Directory.Build.props` and the SDK version in `global.json` | dotnet-code-reviewer | `lab-01-wave-1` |
 | 2 | T-01.9 Browser tests; T-01.10 README | **Yes** (2 worktrees) | Disjoint paths: tests and UI fixes vs `README.md` | dotnet-code-reviewer (T-01.9); architecture-compliance-reviewer (T-01.10) | — |
 | 2-int | T-01.11 CI pipeline and repository automation | No (integration) | Owns the CI hotspot; must run the final test projects | azure-infra-reviewer | `lab-01-wave-2` |
 | End | Whole lab diff `main...lab/01` | — | — | architecture-compliance-reviewer | `lab-01` (on `main` after merge) |
@@ -635,7 +809,8 @@ order does not matter.
    default setup enabled.
 7. Worktrees and task branches removed.
 8. Lab report in the PR: FR/NFR IDs closed, deviations (e.g. CSP
-   import-map handling), follow-ups for Lab 02.
+   import-map handling), follow-ups for Lab 02, and the follow-ups of
+   §13 (done or carried).
 9. The solution-architect updates `ROADMAP.md` status and writes the
    Lab 02 spec from the merged code.
 
@@ -648,3 +823,57 @@ order does not matter.
   string (Lab 02 adds the Azure Monitor exporter).
 - The CI job names used in branch protection and as the gate for
   `cd-dev.yml`.
+
+## 13. Follow-ups
+
+Non-blocking items recorded during the lab (from task reviews,
+2026-10-01, and the end-of-lab compliance review, 2026-10-09). Each is
+listed in the lab report (DoD item 8) as done or carried.
+
+1. **Architecture-test namespace rule (T-01.7)** — carried: test
+   `type.Name.StartsWith('<')` instead of `FullName`, so source-generator
+   `file`-scoped types (`[GeneratedRegex]`, configuration binder, options
+   validation) are excluded. Fix when the first such generator is
+   adopted (by the task that adopts it).
+2. **Placeholder tests** — partly done: the `tests/InPolsure.Web.UiTests`
+   placeholder was removed in T-01.9;
+   `tests/InPolsure.Web.IntegrationTests/PlaceholderTests.cs` is still
+   present, carried (the next task owning that folder removes it).
+3. **Image tags and Dependabot scope in this spec** — done (end-of-lab
+   docs pass, 2026-10-09): §6.6/§6.7 now name the digest-pinned
+   `sdk:10.0.401` / `aspnet:10.0.12-noble-chiseled` tags and the
+   `docker-compose` scope for the root `compose.yaml`.
+4. **`StatusCodePagesHostTests.Head_unknown_path_returns_404`** —
+   carried: it pins build-output-only behaviour (§6.1: the published
+   image returns 405) and does not guard C-01. Drop it or retarget it.
+5. **UI-test console CSP detector** — carried, local only: it matches
+   Chromium's wording (`Content Security Policy`); Firefox uses
+   `Content-Security-Policy`. CI runs Chromium only (§6.5).
+6. **axe-run CSP window** — carried, optional: the test clears all CSP
+   violations raised while axe runs; filter by source instead.
+7. **Dependabot NuGet discovery** — carried: verify after the first run
+   that Dependabot finds packages with `.slnx` and central package
+   management.
+8. **Dockerfile frontend** — carried: `# syntax=docker/dockerfile:1`
+   floats; pin it (tag plus digest) or accept it explicitly.
+9. **NuGet cache in CI** — carried: none, because there is no lock file.
+10. **Version at startup** — carried: [`DELIVERY.md`](../DELIVERY.md) §9
+    says the version is logged at startup; the app only sets OTel
+    `service.version`. Add a startup version log line or amend
+    DELIVERY §9 — decide in the Lab 02 spec.
+
+### Deviations recorded at the end of the lab (2026-10-09)
+
+For the lab report (DoD item 8); all within ADRs, no ADR changed.
+
+- `X-Frame-Options: DENY` is sent in addition to CSP (§6.1, accepted in
+  T-01.3 review).
+- `<ImportMap />` removed; no import-map hash needed, ADR-0011's CSP
+  string unchanged (T-01.9; DELIVERY §12 G-2 closed).
+- The `ReconnectModal` script is loaded from `App.razor` on every page,
+  not only on interactive pages.
+- C-01 fixed with inline middleware in `Program.cs` (T-01.9), not with
+  an extension method.
+- AC-08 automated with a hard Kestrel stop; Playwright offline mode
+  leaves the WebSocket open and does not trigger the dialog.
+- Test reports via `--report-xunit-trx`; no code coverage in Lab 01.

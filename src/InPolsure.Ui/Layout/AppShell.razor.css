@@ -1,0 +1,75 @@
+.skip-link {
+    position: absolute;
+    top: var(--space-2);
+    left: var(--space-2);
+    z-index: 100;
+    padding: var(--space-2) var(--space-3);
+    border: 2px solid var(--brand-primary);
+    background-color: var(--color-surface);
+    color: var(--brand-primary);
+    font-weight: 600;
+    border-radius: var(--radius);
+    transform: translateY(-200%);
+}
+
+.skip-link:focus {
+    transform: none;
+}
+
+/* The skip link appears over the header, so its focus ring uses the header's text colour, like the header's own
+   controls below (WCAG 2.1 SC 1.4.11: the default --color-focus on --brand-primary is only about 1.3:1). */
+.skip-link:focus-visible {
+    outline-color: var(--brand-on-primary);
+}
+
+.app-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+    padding: var(--space-3) var(--space-4);
+    background-color: var(--brand-primary);
+    color: var(--brand-on-primary);
+}
+
+.app-header__brand {
+    color: var(--brand-on-primary);
+    font-size: 1.25rem;
+    font-weight: 700;
+    text-decoration: none;
+}
+
+.app-header__brand:hover {
+    text-decoration: underline;
+}
+
+/* Every focusable element in the header, including HeaderContent from other components (hence ::deep), draws
+   its focus ring in --brand-on-primary, which contrasts with --brand-primary (6.7:1 with the defaults). */
+.app-header ::deep :focus-visible {
+    outline-color: var(--brand-on-primary);
+}
+
+.app-main {
+    flex: 1 0 auto;
+    width: 100%;
+    max-width: var(--content-max-width);
+    margin: 0 auto;
+    padding: var(--space-4);
+}
+
+/* Programmatic focus from the skip link should not draw a ring around the whole page. */
+.app-main:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.app-footer {
+    padding: var(--space-3) var(--space-4);
+    border-top: 1px solid var(--color-border);
+    background-color: var(--color-surface-alt);
+    color: var(--color-text-muted);
+    font-size: 0.875rem;
+}
+
+.app-footer__text {
+    margin: 0;
+}
