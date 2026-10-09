@@ -3,6 +3,7 @@ using InPolsure.Web.Diagnostics;
 using InPolsure.Web.Health;
 using InPolsure.Web.Observability;
 using InPolsure.Web.Security;
+using Microsoft.AspNetCore.Diagnostics;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -34,6 +35,20 @@ app.UseInPolsureSecurityHeaders();
 // request, also across re-execution). Before antiforgery, so the re-executed Razor component endpoint passes
 // through the antiforgery middleware like any other component endpoint (same order as the .NET 10 template).
 app.UseStatusCodePagesWithReExecute("/not-found", createScopeForStatusCodePages: true);
+
+// Only a GET or HEAD 404 gets the HTML not-found page. Any other status or method (for example 405 for
+// POST /health/live, with its Allow header) is sent as is: re-executing it would run the Razor component endpoint
+// with the original method and replace the status (a POST with a body got 400) (lab-01 §6.2).
+app.Use(async (context, next) =>
+{
+    await next(context);
+
+    var isGetOrHead = HttpMethods.IsGet(context.Request.Method) || HttpMethods.IsHead(context.Request.Method);
+    if (!isGetOrHead || context.Response.StatusCode != StatusCodes.Status404NotFound)
+    {
+        context.Features.Get<IStatusCodePagesFeature>()?.Enabled = false;
+    }
+});
 
 app.MapStaticAssets();
 app.UseAntiforgery();

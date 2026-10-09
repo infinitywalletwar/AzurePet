@@ -4,6 +4,8 @@
  * overrides the --brand-* custom properties (ADR-0011). Components use these variables, never literal colours.
  * Contrast of the defaults (WCAG 2.1 AA): --brand-on-primary on --brand-primary 6.7:1,
  * --color-text on --color-surface 14.7:1, --color-text-muted on --color-surface 7.6:1, focus ring (--brand-accent) on --color-surface 5.0:1.
+ * On --brand-primary backgrounds (the header) the focus ring is --brand-on-primary instead, because --color-focus there
+ * is only about 1.3:1 (AppShell.razor.css).
  */
 :root {
     /* Brand (overridable per tenant). */

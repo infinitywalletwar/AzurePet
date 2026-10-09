@@ -14,14 +14,14 @@ namespace InPolsure.Web.IntegrationTests.Host;
 public sealed class SecurityHeadersHostTests
 {
     // The exact policy of lab-01 §6.1 (ADR-0011 item 10, tightened). Kept literal on purpose.
-    private const string Policy =
+    internal const string Policy =
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'self'; " +
         "font-src 'self'; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none'";
 
     // appsettings.json enables HSTS, which adds upgrade-insecure-requests to the enforced policy.
-    private const string PolicyWithUpgrade = Policy + "; upgrade-insecure-requests";
+    internal const string PolicyWithUpgrade = Policy + "; upgrade-insecure-requests";
 
-    private const string BlazorFrameAncestorsPolicy = "frame-ancestors 'none'";
+    internal const string BlazorFrameAncestorsPolicy = "frame-ancestors 'none'";
 
     private const string Csp = "Content-Security-Policy";
     private const string CspReportOnly = "Content-Security-Policy-Report-Only";
@@ -166,7 +166,7 @@ public sealed class SecurityHeadersHostTests
     }
 
     /// <summary>Exactly two enforced CSP headers: the exact app policy once, and Blazor's frame-ancestors policy.</summary>
-    private static void AssertHtmlPagePolicies(HttpResponseMessage response, string appPolicy)
+    internal static void AssertHtmlPagePolicies(HttpResponseMessage response, string appPolicy)
     {
         var values = Values(response, Csp);
         Assert.Equal(2, values.Length);

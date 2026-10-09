@@ -35,4 +35,27 @@ public sealed class LogPrivacyHostTests
         Assert.NotEmpty(logs.Entries);
         Assert.DoesNotContain(logs.Entries, entry => entry.Contains(Secret, StringComparison.Ordinal));
     }
+
+    [Theory]
+    [InlineData(InPolsureWebFactory.TestingEnvironment)]
+    [InlineData("Development")]
+    public async Task Get_with_token_in_query_string_and_hosting_diagnostics_at_information_logs_the_value(string environmentName)
+    {
+        // Positive control for the test above: with the category rule removed, the hosting "Request starting"
+        // entry carries the raw query string, so the capture would detect a leak.
+        var logs = new CapturingLoggerProvider();
+        await using var factory = new InPolsureWebFactory(
+            environmentName,
+            settings: new Dictionary<string, string?> { ["Logging:LogLevel:Microsoft.AspNetCore.Hosting.Diagnostics"] = "Information" },
+            configureTestServices: services => services.AddSingleton<ILoggerProvider>(logs));
+        using var client = factory.CreateNonRedirectingClient();
+
+        var (response, _) = await GetAsync(client, $"/?token={Secret}");
+        using (response)
+        {
+            Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        }
+
+        Assert.Contains(logs.Entries, entry => entry.Contains(Secret, StringComparison.Ordinal));
+    }
 }

@@ -52,6 +52,7 @@ public sealed class PagesTests
     {
         // No production code throws on purpose; the test replaces a dependency of the probe page with one that
         // fails while the page renders. The exception handler re-executes /Error.
+        // Relies on InteractiveProbe.razor injecting IOptions<DiagnosticsOptions>; change this if the page stops.
         await using var factory = new InPolsureWebFactory(
             settings: new Dictionary<string, string?> { ["Diagnostics:EnableUiProbePages"] = "true" },
             configureTestServices: services =>
@@ -67,6 +68,10 @@ public sealed class PagesTests
             Assert.DoesNotContain(nameof(InvalidOperationException), body, StringComparison.Ordinal);
             Assert.DoesNotContain(nameof(ThrowingDiagnosticsOptions), body, StringComparison.Ordinal);
             Assert.DoesNotContain("   at ", body, StringComparison.Ordinal);
+
+            // The error page is an HTML page like any other: both enforced CSP headers and framing protection.
+            SecurityHeadersHostTests.AssertHtmlPagePolicies(response, SecurityHeadersHostTests.PolicyWithUpgrade);
+            Assert.Equal(["DENY"], Values(response, "X-Frame-Options"));
         }
     }
 

@@ -29,7 +29,10 @@
     [Parameter]
     public EventCallback<MouseEventArgs> OnClick { get; set; }
 
-    /// <summary>Other attributes (for example <c>name</c>, <c>value</c>, <c>aria-*</c>) passed to the element.</summary>
+    /// <summary>
+    /// Other attributes (for example <c>name</c>, <c>value</c>, <c>aria-*</c>) passed to the element. A <c>class</c>
+    /// attribute is appended to the component's own classes, not replacing them.
+    /// </summary>
     [Parameter(CaptureUnmatchedValues = true)]
     public IReadOnlyDictionary<string, object>? AdditionalAttributes { get; set; }
 
@@ -40,9 +43,19 @@
         _ => "button",
     };
 
-    private string CssClass => Variant switch
+    // Rendered after @attributes, so it wins over a captured class attribute; that value is merged in here.
+    private string CssClass
     {
-        ButtonVariant.Secondary => "button button--secondary",
-        _ => "button button--primary",
-    };
+        get
+        {
+            var own = Variant switch
+            {
+                ButtonVariant.Secondary => "button button--secondary",
+                _ => "button button--primary",
+            };
+            var extra = AdditionalAttributes?.GetValueOrDefault("class")?.ToString()?.Trim();
+
+            return string.IsNullOrEmpty(extra) ? own : $"{own} {extra}";
+        }
+    }
 }

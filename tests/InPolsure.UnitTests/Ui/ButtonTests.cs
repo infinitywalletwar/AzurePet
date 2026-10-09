@@ -77,4 +77,28 @@ public sealed class ButtonTests : BunitContext
         Assert.Equal("Close dialog", button.GetAttribute("aria-label"));
         Assert.Equal("action", button.GetAttribute("name"));
     }
+
+    [Fact]
+    public void Render_with_class_attribute_merges_it_with_component_classes()
+    {
+        var cut = Render<Button>(parameters => parameters
+            .Add(p => p.Variant, ButtonVariant.Secondary)
+            .AddUnmatched("class", " probe-action wide ")
+            .AddChildContent("Go"));
+
+        var button = cut.Find("button");
+        Assert.Equal("button button--secondary probe-action wide", button.GetAttribute("class"));
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void Render_with_blank_class_attribute_keeps_only_component_classes(string blank)
+    {
+        var cut = Render<Button>(parameters => parameters
+            .AddUnmatched("class", blank)
+            .AddChildContent("Go"));
+
+        Assert.Equal("button button--primary", cut.Find("button").GetAttribute("class"));
+    }
 }
