@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Approved** (2026-10-01). Proposed by solution-architect. Patch 2026-10-01 (user-approved): test runner switched to Microsoft.Testing.Platform via `global.json`, and the wave-0 build conventions (NuGet audit level, IDE0005, test SDKs, CA1707, Blazor template default) recorded in §5. Notes on MTP syntax and exit code 8 added to T-01.10 and T-01.11. Patch 2026-10-01 (user-approved, after wave 1 batch 1 reviews): accepted T-01.3 deviations and config keys (§6.1), health excluded from HTTP metrics and GET/HEAD only (§6.2), builder-style extension exception (§5), path-based trace filter and query redaction note (§6.3), T-01.8 pipeline order, logging, log-content test and `PublishDocumentationFiles` (§9). Patch 2026-10-01 (user decision, after T-01.6): align on .NET SDK `10.0.401` everywhere — T-01.8 bumps `global.json` (local prerequisite in §8); T-01.11 uses `setup-dotnet` with `global-json-file`, passes `SOURCE_REVISION_ID` to `docker build`, and extends Dependabot `docker` updates to the root `compose.yaml` (§9). Patch 2026-10-01 (user decision, after T-01.8 review; T-01.8 merged as is): §6.1 corrected — Blazor's `frame-ancestors 'none'` CSP is on every Razor component response and stays enforced in report-only mode; `HEAD /` returns 405, so page header checks use GET (T-01.8 Verify, §6.7, T-01.11); T-01.5 and T-01.8 review Minors and the AC-08 outage simulation carried to T-01.9 (Owns extended to `tests/InPolsure.Web.IntegrationTests/Host/**` and `tests/InPolsure.UnitTests/Ui/**`); new §13 Follow-ups. Patch 2026-10-09 (user decision, after the 2026-10-02 implementation review): C-01 (health method rejection returns 400 via status-code re-execution) assigned to T-01.9; `src/InPolsure.Web/Program.cs` added to T-01.9 Shared files for that fix only. |
+| **Status** | **Approved** (2026-10-01). Proposed by solution-architect. Patch 2026-10-01 (user-approved): test runner switched to Microsoft.Testing.Platform via `global.json`, and the wave-0 build conventions (NuGet audit level, IDE0005, test SDKs, CA1707, Blazor template default) recorded in §5. Notes on MTP syntax and exit code 8 added to T-01.10 and T-01.11. Patch 2026-10-01 (user-approved, after wave 1 batch 1 reviews): accepted T-01.3 deviations and config keys (§6.1), health excluded from HTTP metrics and GET/HEAD only (§6.2), builder-style extension exception (§5), path-based trace filter and query redaction note (§6.3), T-01.8 pipeline order, logging, log-content test and `PublishDocumentationFiles` (§9). Patch 2026-10-01 (user decision, after T-01.6): align on .NET SDK `10.0.401` everywhere — T-01.8 bumps `global.json` (local prerequisite in §8); T-01.11 uses `setup-dotnet` with `global-json-file`, passes `SOURCE_REVISION_ID` to `docker build`, and extends Dependabot `docker` updates to the root `compose.yaml` (§9). Patch 2026-10-01 (user decision, after T-01.8 review; T-01.8 merged as is): §6.1 corrected — Blazor's `frame-ancestors 'none'` CSP is on every Razor component response and stays enforced in report-only mode; `HEAD /` returns 405, so page header checks use GET (T-01.8 Verify, §6.7, T-01.11); T-01.5 and T-01.8 review Minors and the AC-08 outage simulation carried to T-01.9 (Owns extended to `tests/InPolsure.Web.IntegrationTests/Host/**` and `tests/InPolsure.UnitTests/Ui/**`); new §13 Follow-ups. Patch 2026-10-09 (user decision, after the 2026-10-02 implementation review): C-01 (health method rejection returns 400 via status-code re-execution) assigned to T-01.9; `src/InPolsure.Web/Program.cs` added to T-01.9 Shared files for that fix only. Patch 2026-10-09 (user decision, after T-01.10 review): test reports use xUnit's built-in `--report-xunit-trx` (MTP `--report-trx`/`--coverage` need packages not in §5 and exit 5); code coverage deferred to the lab that needs it (DELIVERY §8 sets no code-coverage gate). |
 | **Lab branch** | `lab/01` (from `main`) |
 | **Version after the lab** | `0.1.0` ([`DELIVERY.md`](../DELIVERY.md) §9) |
 | **Roadmap** | [`ROADMAP.md`](../ROADMAP.md#lab-01-walking-skeleton) |
@@ -146,9 +146,13 @@ project is created in this lab.
   phased out. Trade-offs: `dotnet test InPolsure.slnx -c Release` and
   `dotnet test <project> --filter "FullyQualifiedName~X"` work
   unchanged, but (a) a filter that matches zero tests exits with
-  **code 8** (not 0), and (b) reporting uses MTP options
-  (`--report-trx`, `--results-directory`, `--coverage`), not VSTest's
-  `--logger trx` / `--collect`. `Microsoft.NET.Test.Sdk` and
+  **code 8** (not 0), and (b) reporting uses xUnit v3's built-in MTP
+  reporter (`--report-xunit-trx --results-directory <dir>`), not
+  VSTest's `--logger trx` / `--collect`. MTP's `--report-trx` and
+  `--coverage` need `Microsoft.Testing.Extensions.TrxReport` /
+  `.CodeCoverage`, which are not in this package list (they exit with
+  code 5); no code coverage in Lab 01 — it is added, with its package,
+  by the lab that needs it. `Microsoft.NET.Test.Sdk` and
   `xunit.runner.visualstudio` stay in the package list for IDE
   test-explorer compatibility.
 - `NuGetAuditLevel` `high`: only high/critical advisories break the
@@ -711,10 +715,11 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
   with `dotnet run` and with `docker compose`, the Aspire dashboard URL,
   installing Playwright browsers, the probe-page switch, where
   configuration lives, the "no secrets in the repository" rule
-  (user-secrets only). English. Tests run on MTP (§5): document MTP
-  options (`--report-trx`, `--results-directory`, `--coverage`), not
-  VSTest's `--logger` / `--collect`, and that a filter matching zero
-  tests exits with code 8.
+  (user-secrets only). English. Tests run on MTP (§5): document
+  `--report-xunit-trx --results-directory <dir>` for test reports (not
+  VSTest's `--logger` / `--collect`; MTP `--report-trx` / `--coverage`
+  need packages not in §5), and that a filter matching zero tests exits
+  with code 8.
 - **Depends on:** T-01.8.
 - **Owns:** `README.md`.
 - **Shared files:** none.
@@ -733,10 +738,13 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
   `build-test`, `ui-tests`, `container`, `dependency-review`),
   `.github/dependabot.yml`, `.github/pull_request_template.md` with the
   checklist from [`DELIVERY.md`](../DELIVERY.md) §7. Tests run on MTP
-  (§5): use `--report-trx --results-directory <dir>` (and `--coverage`
-  if needed), not `--logger trx` / `--collect`; a `--filter` step that
-  matches zero tests exits with code 8 and fails the job, so filters in
-  `ci.yml` must match real tests. Install the SDK with `setup-dotnet`
+  (§5): `ci.yml` uses `--report-xunit-trx --results-directory <dir>`,
+  not `--report-trx` / `--coverage` (packages not in §5, exit 5) or
+  `--logger trx` / `--collect`; no coverage step in Lab 01. A
+  `--filter` step that matches zero tests exits with code 8 and fails
+  the job, so filters in `ci.yml` must match real tests; a filtered run
+  over the whole solution exits 8 if any test project has no matching
+  tests, so filter per project. Install the SDK with `setup-dotnet`
   and `global-json-file: global.json` (same 10.0.4xx band as the
   Dockerfile, T-01.8). The `container` job's `docker build` passes
   `--build-arg SOURCE_REVISION_ID=${{ github.sha }}` (the Dockerfile
