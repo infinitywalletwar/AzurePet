@@ -2,7 +2,7 @@
 
 | | |
 |---|---|
-| **Status** | **Approved** (2026-10-01). Proposed by solution-architect. Patch 2026-10-01 (user-approved): test runner switched to Microsoft.Testing.Platform via `global.json`, and the wave-0 build conventions (NuGet audit level, IDE0005, test SDKs, CA1707, Blazor template default) recorded in §5. Notes on MTP syntax and exit code 8 added to T-01.10 and T-01.11. Patch 2026-10-01 (user-approved, after wave 1 batch 1 reviews): accepted T-01.3 deviations and config keys (§6.1), health excluded from HTTP metrics and GET/HEAD only (§6.2), builder-style extension exception (§5), path-based trace filter and query redaction note (§6.3), T-01.8 pipeline order, logging, log-content test and `PublishDocumentationFiles` (§9). Patch 2026-10-01 (user decision, after T-01.6): align on .NET SDK `10.0.401` everywhere — T-01.8 bumps `global.json` (local prerequisite in §8); T-01.11 uses `setup-dotnet` with `global-json-file`, passes `SOURCE_REVISION_ID` to `docker build`, and extends Dependabot `docker` updates to the root `compose.yaml` (§9). Patch 2026-10-01 (user decision, after T-01.8 review; T-01.8 merged as is): §6.1 corrected — Blazor's `frame-ancestors 'none'` CSP is on every Razor component response and stays enforced in report-only mode; `HEAD /` returns 405, so page header checks use GET (T-01.8 Verify, §6.7, T-01.11); T-01.5 and T-01.8 review Minors and the AC-08 outage simulation carried to T-01.9 (Owns extended to `tests/InPolsure.Web.IntegrationTests/Host/**` and `tests/InPolsure.UnitTests/Ui/**`); new §13 Follow-ups. |
+| **Status** | **Approved** (2026-10-01). Proposed by solution-architect. Patch 2026-10-01 (user-approved): test runner switched to Microsoft.Testing.Platform via `global.json`, and the wave-0 build conventions (NuGet audit level, IDE0005, test SDKs, CA1707, Blazor template default) recorded in §5. Notes on MTP syntax and exit code 8 added to T-01.10 and T-01.11. Patch 2026-10-01 (user-approved, after wave 1 batch 1 reviews): accepted T-01.3 deviations and config keys (§6.1), health excluded from HTTP metrics and GET/HEAD only (§6.2), builder-style extension exception (§5), path-based trace filter and query redaction note (§6.3), T-01.8 pipeline order, logging, log-content test and `PublishDocumentationFiles` (§9). Patch 2026-10-01 (user decision, after T-01.6): align on .NET SDK `10.0.401` everywhere — T-01.8 bumps `global.json` (local prerequisite in §8); T-01.11 uses `setup-dotnet` with `global-json-file`, passes `SOURCE_REVISION_ID` to `docker build`, and extends Dependabot `docker` updates to the root `compose.yaml` (§9). Patch 2026-10-01 (user decision, after T-01.8 review; T-01.8 merged as is): §6.1 corrected — Blazor's `frame-ancestors 'none'` CSP is on every Razor component response and stays enforced in report-only mode; `HEAD /` returns 405, so page header checks use GET (T-01.8 Verify, §6.7, T-01.11); T-01.5 and T-01.8 review Minors and the AC-08 outage simulation carried to T-01.9 (Owns extended to `tests/InPolsure.Web.IntegrationTests/Host/**` and `tests/InPolsure.UnitTests/Ui/**`); new §13 Follow-ups. Patch 2026-10-09 (user decision, after the 2026-10-02 implementation review): C-01 (health method rejection returns 400 via status-code re-execution) assigned to T-01.9; `src/InPolsure.Web/Program.cs` added to T-01.9 Shared files for that fix only. |
 | **Lab branch** | `lab/01` (from `main`) |
 | **Version after the lab** | `0.1.0` ([`DELIVERY.md`](../DELIVERY.md) §9) |
 | **Roadmap** | [`ROADMAP.md`](../ROADMAP.md#lab-01-walking-skeleton) |
@@ -672,15 +672,25 @@ Before the lab PR is merged: enable CodeQL default setup (C#, Actions).
     host without graceful shutdown) or block the network (Playwright
     `context.SetOfflineAsync(true)`). A graceful stop is not a valid
     simulation: the circuit reconnects during the shutdown timeout.
+  - From the 2026-10-02 implementation review (user decision
+    2026-10-09), C-01: the global
+    `UseStatusCodePagesWithReExecute("/not-found", ...)` in `Program.cs`
+    re-executes `POST /health/live` and `POST /health/ready` (405) as
+    POST to the Razor not-found endpoint, which returns 400; §6.2
+    requires 405. Restrict the HTML not-found re-execution to GET/HEAD
+    404 requests so other statuses pass through unchanged. Add a
+    full-host test: POST to both health endpoints returns 405 with
+    `Allow: GET, HEAD`.
 - **Depends on:** T-01.8.
 - **Owns:** `tests/InPolsure.Web.UiTests/**`;
   `tests/InPolsure.Web.IntegrationTests/Host/**` (carried T-01.8 test
-  items only); for CSP and carried accessibility fixes only:
+  items and the C-01 test only); for CSP and carried accessibility fixes only:
   `src/InPolsure.Ui/**`, `src/InPolsure.Web/Components/**`,
   `src/InPolsure.Web/wwwroot/**`; for the `Button` bUnit test only:
   `tests/InPolsure.UnitTests/Ui/**`.
 - **Shared files:** `src/InPolsure.Web/Components/App.razor` (only if
-  the import-map hash is required).
+  the import-map hash is required); `src/InPolsure.Web/Program.cs`
+  (C-01 status-code re-execution scope only).
 - **Acceptance:** AC-04, AC-07, AC-08 (or recorded manual check), AC-09
   with CSP enforced.
 - **Verify:**
