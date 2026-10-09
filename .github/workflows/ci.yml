@@ -1,0 +1,247 @@
+# Continuous integration (docs/labs/lab-01-walking-skeleton.md §6.7, docs/DELIVERY.md §8).
+# No Azure access, no environment, no secrets (DELIVERY §8.1; ADR-0009 item 12).
+# Third-party actions are pinned to full commit SHAs; Dependabot (github-actions) updates them.
+name: ci
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main, "lab/*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    # Explicit `bash` makes GitHub run `bash --noprofile --norc -eo pipefail {0}`.
+    shell: bash
+
+env:
+  DOTNET_NOLOGO: "true"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "true"
+  DOTNET_SKIP_FIRST_TIME_EXPERIENCE: "true"
+  CONFIGURATION: Release
+
+jobs:
+  build-test:
+    name: build-test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET SDK (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore InPolsure.slnx
+
+      # NFR-027: fail on High or Critical advisories, direct or transitive.
+      # Runs right after restore so a build or test failure does not hide it.
+      - name: Vulnerable packages (High/Critical)
+        run: |
+          dotnet package list --project InPolsure.slnx --vulnerable --include-transitive --format json > vulnerable.json
+          errors=$(jq -r '[.problems[]? | select(.level == "error") | .text] | .[]' vulnerable.json)
+          if [ -n "$errors" ]; then
+            echo "::error::dotnet package list reported problems:"
+            echo "$errors"
+            exit 1
+          fi
+          findings=$(jq -r '
+            [ .projects[]
+              | .path as $project
+              | .frameworks[]?
+              | (.topLevelPackages[]?, .transitivePackages[]?)
+              | . as $pkg
+              | .vulnerabilities[]?
+              | select(.severity == "High" or .severity == "Critical")
+              | "\($project): \($pkg.id) \($pkg.resolvedVersion) \(.severity) \(.advisoryurl)" ]
+            | .[]' vulnerable.json)
+          if [ -n "$findings" ]; then
+            echo "::error::High or Critical vulnerable packages found:"
+            echo "$findings"
+            exit 1
+          fi
+          echo "No High or Critical vulnerable packages."
+
+      - name: Build (warnings as errors)
+        run: dotnet build InPolsure.slnx -c "$CONFIGURATION" --no-restore
+
+      - name: Verify formatting
+        run: dotnet format InPolsure.slnx --verify-no-changes --no-restore
+
+      # One project per run: UI tests need a browser (ui-tests job), and MTP exits 8
+      # when a filtered run matches zero tests, so no solution-wide filter is used.
+      - name: Unit tests
+        run: >-
+          dotnet test --project tests/InPolsure.UnitTests -c "$CONFIGURATION" --no-build
+          --report-xunit-trx --results-directory TestResults/UnitTests
+
+      - name: Integration tests
+        run: >-
+          dotnet test --project tests/InPolsure.Web.IntegrationTests -c "$CONFIGURATION" --no-build
+          --report-xunit-trx --results-directory TestResults/IntegrationTests
+
+      - name: Architecture tests
+        run: >-
+          dotnet test --project tests/InPolsure.ArchitectureTests -c "$CONFIGURATION" --no-build
+          --report-xunit-trx --results-directory TestResults/ArchitectureTests
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-build-test
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+          retention-days: 14
+
+  ui-tests:
+    name: ui-tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Set up .NET SDK (global.json)
+        uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
+        with:
+          global-json-file: global.json
+
+      - name: Build UI tests
+        run: dotnet build tests/InPolsure.Web.UiTests -c "$CONFIGURATION"
+
+      # Chromium only in CI (§6.5). pwsh is preinstalled on GitHub Ubuntu runners.
+      - name: Install Playwright Chromium
+        run: pwsh "tests/InPolsure.Web.UiTests/bin/$CONFIGURATION/net10.0/playwright.ps1" install --with-deps chromium
+
+      - name: UI tests (CSP, axe, interactivity)
+        run: >-
+          dotnet test --project tests/InPolsure.Web.UiTests -c "$CONFIGURATION" --no-build
+          --report-xunit-trx --results-directory TestResults/UiTests
+
+      - name: Upload test results
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: test-results-ui-tests
+          path: TestResults/**/*.trx
+          if-no-files-found: warn
+          retention-days: 14
+
+  container:
+    name: container
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      IMAGE: inpolsure-web:ci
+      CONTAINER: inpolsure-web-ci
+    steps:
+      - name: Check out
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # No push, no registry login (§6.7). SOURCE_REVISION_ID stamps 0.1.0+<sha> (DELIVERY §9).
+      - name: Build image
+        env:
+          SOURCE_REVISION_ID: ${{ github.sha }}
+        run: >-
+          docker build
+          --file src/InPolsure.Web/Dockerfile
+          --build-arg SOURCE_REVISION_ID="$SOURCE_REVISION_ID"
+          --tag "$IMAGE"
+          .
+
+      # AC-12: non-root user, no secrets.json or .env files in the image.
+      - name: Inspect image
+        run: |
+          user=$(docker image inspect --format '{{.Config.User}}' "$IMAGE")
+          echo "Image user: '$user'"
+          uid="${user%%:*}"
+          if [ -z "$uid" ] || [ "$uid" = "0" ] || [ "$uid" = "root" ]; then
+            echo "::error::Image must run as a non-root user."
+            exit 1
+          fi
+          listing=$(mktemp)
+          trap 'rm -f "$listing"; docker rm --force "$CONTAINER-fs" > /dev/null 2>&1 || true' EXIT
+          docker create --name "$CONTAINER-fs" "$IMAGE" > /dev/null
+          # Listing goes to a file so pipefail fails the step if export or tar fails.
+          docker export "$CONTAINER-fs" | tar -t > "$listing"
+          leaked=$(grep -E '(^|/)(secrets\.json|\.env[^/]*)$' "$listing" || true)
+          if [ -n "$leaked" ]; then
+            echo "::error::Image contains secret files:"
+            echo "$leaked"
+            exit 1
+          fi
+
+      - name: Run container
+        run: docker run --detach --name "$CONTAINER" --publish 127.0.0.1:8080:8080 "$IMAGE"
+
+      - name: Wait for /health/live and /health/ready
+        run: |
+          for path in /health/live /health/ready; do
+            for attempt in $(seq 1 30); do
+              if curl -fsS --max-time 5 --connect-timeout 2 "http://localhost:8080$path"; then
+                echo " <- $path"
+                break
+              fi
+              if [ "$attempt" -eq 30 ]; then
+                echo "::error::$path did not return 200 within 30 s."
+                exit 1
+              fi
+              sleep 1
+            done
+          done
+
+      # GET, not HEAD: Razor component endpoints accept only GET/POST, HEAD / is not 200 (§6.1).
+      # First command: the §6.1/§6.7 check. Second: our policy (not only Blazor's
+      # `frame-ancestors 'none'` header) is present and enforced.
+      - name: Assert CSP header on /
+        run: |
+          curl -fsS --max-time 5 --connect-timeout 2 -D - -o /dev/null http://localhost:8080/ | grep -i '^content-security-policy:'
+          curl -fsS --max-time 5 --connect-timeout 2 -D - -o /dev/null http://localhost:8080/ \
+            | grep -i '^content-security-policy:' \
+            | grep -q "default-src 'self'"
+
+      - name: Container logs
+        if: ${{ always() }}
+        run: docker logs "$CONTAINER" || true
+
+      - name: Stop container
+        if: ${{ always() }}
+        run: docker rm --force "$CONTAINER" || true
+
+  dependency-review:
+    name: dependency-review
+    if: ${{ github.event_name == 'pull_request' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    # Reads the dependency graph diff only; no PR comment, so no pull-requests: write.
+    permissions:
+      contents: read
+    steps:
+      - name: Dependency review
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high

@@ -1,0 +1,41 @@
+# Dependency updates (docs/labs/lab-01-walking-skeleton.md §6.7, AC-16; docs/DELIVERY.md §8.1).
+# Weekly; minor and patch updates are grouped per ecosystem, majors arrive as separate PRs.
+# Security updates are enabled in repository settings (DELIVERY §3.2) and are not grouped here.
+version: 2
+
+updates:
+  # Central package versions in Directory.Packages.props.
+  - package-ecosystem: nuget
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      nuget-minor-and-patch:
+        update-types: [minor, patch]
+
+  # SHA-pinned actions in .github/workflows (version comment is updated too).
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      github-actions-minor-and-patch:
+        update-types: [minor, patch]
+
+  # sdk and aspnet base images (tag + digest) in the Web Dockerfile.
+  - package-ecosystem: docker
+    directory: /src/InPolsure.Web
+    schedule:
+      interval: weekly
+    groups:
+      docker-minor-and-patch:
+        update-types: [minor, patch]
+
+  # Pinned aspire-dashboard image (tag + digest) in the root compose.yaml.
+  - package-ecosystem: docker-compose
+    directory: /
+    schedule:
+      interval: weekly
+    groups:
+      docker-compose-minor-and-patch:
+        update-types: [minor, patch]
