@@ -4,9 +4,9 @@
 |---|---|
 | **Product** | InPolsure. The repository is still named `AzurePet`. |
 | **Status** | **Approved v1** (2026-10-01). Proposed by solution-architect. Patch 2026-10-01 (user-approved): task branches renamed `lab/NN/T-NN.x-slug` → `task/NN/T-NN.x-slug` (§3.1). |
-| **Phase** | 5: Lab roadmap |
+| **Phase** | Incremental implementation (Lab 01) |
 | **Owner** | solution-architect |
-| **Last updated** | 2026-10-01 |
+| **Last updated** | 2026-10-09 |
 | **Consistent with** | [ADR-0009](architecture/decisions/0009-iac-and-cicd.md) (IaC, CI/CD, OIDC), [ADR-0012](architecture/decisions/0012-secrets-and-configuration.md) (identities, secrets), [ADR-0014](architecture/decisions/0014-environments-lifecycle.md) (environments lifecycle), [ADR-0016](architecture/decisions/0016-pre-domain-mode.md) (pre-domain mode), [ADR-0010](architecture/decisions/0010-observability.md) (alerts) |
 
 This document describes how code gets from a lab spec to `main` and from
@@ -660,7 +660,7 @@ Follow ADR-0016 §4 and the Lab 18 spec. Until then, no prod exists and
 | # | Gap | Proposal | Needs |
 |---|---|---|---|
 | G-1 | ADR-0009 item 4 asks for `what-if` on pull requests, but no identity is defined for PR jobs: fork PRs get no OIDC token, and the dev federated credential is bound to GitHub environment `dev` (a PR job targeting `dev` would receive a Contributor-level token for PR code). | Lab 02 spec: Bicep lint/build on every PR (no Azure access); `what-if` against dev only for PRs from branches of this repository, in a job that targets environment `dev` and runs only after the owner approves the run, **or** `what-if` inside `cd-dev.yml` before deployment with the PR showing lint only. | **Decided 2026-10-01:** `what-if` inside `cd-dev.yml` before deployment; PRs run lint/build only. A short ADR amending ADR-0009 item 4 is written before the Lab 02 spec. |
-| G-2 | The .NET 10 Blazor Web App renders an inline import-map `<script>` (`ImportMap` component). ADR-0011's CSP is `script-src 'self'`. | Lab 01 removes the import map if not needed; otherwise a per-request SHA-256 hash for it (Lab 01 spec §6.1). | If the hash is needed: ADR clarification of the CSP string (architect) |
+| G-2 | The .NET 10 Blazor Web App renders an inline import-map `<script>` (`ImportMap` component). ADR-0011's CSP is `script-src 'self'`. | Lab 01 removes the import map if not needed; otherwise a per-request SHA-256 hash for it (Lab 01 spec §6.1). | **Closed 2026-10-09:** the import map was removed in T-01.9; no hash was needed and ADR-0011's CSP string is unchanged. |
 | G-3 | ADR-0012's teardown action list may not cover extension and child resources (diagnostic settings on the Container Apps environment, managed certificates after the gate, role assignments scoped to workload resources). | Lab 09 derives the list from the real `workload.bicep` and test-runs teardown. Adding resource types is foreseen by ADR-0012; anything needing `Microsoft.Authorization/*` would contradict it. | Superseding ADR only if `Microsoft.Authorization/*` is required |
 | G-4 | Merge method for lab PRs is not covered by an ADR. | Merge commit (§3.3). | **Confirmed 2026-10-01** |
 | G-5 | Dependabot PRs go straight to `main`, outside the lab flow. | Allowed when CI is green; the user merges them (squash) between waves or labs, not during a lab's final PR review. | **Confirmed 2026-10-01** |

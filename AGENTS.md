@@ -13,10 +13,11 @@ and implementation labs.
 
 **Incremental implementation — Lab 01**
 (`docs/labs/lab-01-walking-skeleton.md`). `docs/ROADMAP.md`,
-`docs/DELIVERY.md` and the Lab 01 spec approved (2026-10-01). Waves 0
-and 1 (T-01.1–T-01.8) merged and tagged `lab-01-wave-0`,
-`lab-01-wave-1` (2026-10-01). Next: wave 2 (T-01.9 browser tests,
-T-01.10 README in parallel), then T-01.11 (CI).
+`docs/DELIVERY.md` and the Lab 01 spec approved (2026-10-01). All
+waves (T-01.1–T-01.11) merged on `lab/01` and tagged `lab-01-wave-0`,
+`lab-01-wave-1`, `lab-01-wave-2` (wave 2: 2026-10-09); end-of-lab
+compliance review passed. Next: lab PR `lab/01` → `main` (green CI,
+user merges), tag `lab-01`, then the Lab 02 spec.
 
 Create code, infrastructure, and solution files only within an approved
 lab task. Never create Azure resources; those are human steps

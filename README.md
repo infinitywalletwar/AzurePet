@@ -130,7 +130,8 @@ Use port 5000 (`dotnet run`) or 8080 (Compose):
 | `/health/live` | `Healthy` (liveness) |
 | `/health/ready` | `Healthy` (readiness) |
 
-Check the security headers with a GET request (`HEAD /` returns 405):
+Check the security headers with a GET request (`HEAD /` is not usable: it returns 405
+from the container and 404 from `dotnet run`):
 
 ```bash
 curl -fsS -D - -o /dev/null http://localhost:8080/ | grep -i '^content-security-policy:'
