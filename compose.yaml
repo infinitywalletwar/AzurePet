@@ -23,7 +23,7 @@ services:
       - aspire-dashboard
 
   aspire-dashboard:
-    image: mcr.microsoft.com/dotnet/aspire-dashboard:13.6.0@sha256:064b50d557fcaffd10f06bf79ba4069bd50994a84034f1a0fc35c165500482d7
+    image: mcr.microsoft.com/dotnet/aspire-dashboard:13.6.1@sha256:03099004e132a7ca2feb66c5fa24715ffeaaf2fffab6f8b2cda23de3abd3ea45
     ports:
       # UI only; the OTLP endpoint (18889) stays on the compose network.
       - "127.0.0.1:18888:18888"
