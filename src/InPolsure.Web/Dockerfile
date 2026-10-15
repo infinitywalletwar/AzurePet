@@ -7,7 +7,7 @@
 # ---- build ---------------------------------------------------------------------------------
 # Runs on the build host's architecture; the output is portable IL (framework-dependent,
 # no RID), so the same publish output runs on amd64 and arm64 runtime images.
-FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.401@sha256:35d40304542c8689331f8cab17c65926cdf48fe711e289321d71924b230a7d29 AS build
+FROM --platform=$BUILDPLATFORM mcr.microsoft.com/dotnet/sdk:10.0.402@sha256:0d99ebf1ccad15037b5c98c9fe8979d6b8dbac23812feae2277a0b277b5c5ffa AS build
 WORKDIR /repo
 
 # Restore as a separate, cached layer: only the files that affect restore are copied first.
@@ -42,7 +42,7 @@ RUN dotnet publish src/InPolsure.Web/InPolsure.Web.csproj \
 
 # ---- runtime -------------------------------------------------------------------------------
 # Chiseled Ubuntu: no shell, no package manager, non-root by default.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-noble-chiseled@sha256:9651fa59abcdf177c30392cb44a820605ca5d618429ab37acbf6e7c644510b02 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.13-noble-chiseled@sha256:84def277556c2843a44fdeefbd3145d0a2e32d8f736d0c1a7b0a96b2880b0187 AS final
 WORKDIR /app
 
 # Image default is 8080; stated explicitly because the platform probes and ingress rely on it.
