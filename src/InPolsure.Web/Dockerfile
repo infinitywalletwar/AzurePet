@@ -42,7 +42,7 @@ RUN dotnet publish src/InPolsure.Web/InPolsure.Web.csproj \
 
 # ---- runtime -------------------------------------------------------------------------------
 # Chiseled Ubuntu: no shell, no package manager, non-root by default.
-FROM mcr.microsoft.com/dotnet/aspnet:10.0.12-noble-chiseled@sha256:9651fa59abcdf177c30392cb44a820605ca5d618429ab37acbf6e7c644510b02 AS final
+FROM mcr.microsoft.com/dotnet/aspnet:10.0.15-noble-chiseled@sha256:7c625e44e5d588b4d7b2a913e94ca4bd5098ce47442da404829e4c7936a764e1 AS final
 WORKDIR /app
 
 # Image default is 8080; stated explicitly because the platform probes and ingress rely on it.
